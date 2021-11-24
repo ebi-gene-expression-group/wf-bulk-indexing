@@ -1,0 +1,6 @@
+[submodule "index-gxa"]
+	path = index-gxa
+	url = https://github.com/ebi-gene-expression-group/index-gxa
+[submodule "index-bioentities"]
+	path = index-bioentities
+	url = https://github.com/ebi-gene-expression-group/index-bioentities

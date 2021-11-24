@@ -1,0 +1,5 @@
+delete_species_bioentities_index:
+  - "-g <group-for-solr>"
+
+load_species_into_bioentities_index:
+  - "-g <group-for-solr>"
