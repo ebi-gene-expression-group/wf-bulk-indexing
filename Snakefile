@@ -3,7 +3,8 @@ import glob
 
 # atom: set grammar=python:
 
-TYPE = ['annotations', 'array_designs', 'go_ens', 'interpro', 'reactome']
+TYPES = ['annotations', 'array_designs', 'go_ens', 'interpro', 'reactome']
+bioentities_directories_to_stage = set()
 
 def get_version(source):
     if source == 'ensembl':
@@ -11,24 +12,7 @@ def get_version(source):
     else:
         return config['wbsp_version']
 
-def get_destination_dir(dir):
-    """
-    Provides the directories where the files will be staged to
-    for the bioentities properties, based on the source directory.
-
-    Assumes that the worklfow runs in the temporary bioentities
-    created for the species.
-    """
-    prefix='bioentity_properties'
-    if 'go_ens' in dir:
-        return f"{prefix}/go"
-    for type in TYPES:
-        if type in dir:
-            return f"{prefix}/{type}"
-
-bioentities_directories_to_stage = set()
-
-def get_bioentities_directories_to_stage(species):
+def get_bioentities_directories_to_stage():
     """
     List all the directories from the main atlas bioentities that need to be staged
     to be able to run this in a per organism level.
@@ -36,6 +20,9 @@ def get_bioentities_directories_to_stage(species):
     The web application code running these processes descides on the species to
     run based on the files it find in the BIOENTITIES path given.
     """
+    global bioentities_directories_to_stage
+    global TYPES
+    species = config['species']
     if bioentities_directories_to_stage:
         return bioentities_directories_to_stage
     dirs=set()
@@ -56,13 +43,31 @@ def get_bioentities_directories_to_stage(species):
     bioentities_directories_to_stage = dirs
     return bioentities_directories_to_stage
 
-def get_all_staging_files(species):
+def get_destination_dir(dir):
+    """
+    Provides the directories where the files will be staged to
+    for the bioentities properties, based on the source directory.
+
+    Assumes that the worklfow runs in the temporary bioentities
+    created for the species.
+    """
+    prefix='bioentity_properties'
+    if 'go_ens' in dir:
+        return f"{prefix}/go"
+    for type in TYPES:
+        if type in dir:
+            return f"{prefix}/{type}"
+
+def get_all_staging_files():
+    species = config['species']
     results = []
-    source_dirs = get_bioentities_directories_to_stage(species)
+    source_dirs = get_bioentities_directories_to_stage()
     for sdir in source_dirs:
         dest = get_destination_dir(sdir)
         files = [os.path.basename(f) for f in glob(f"{sdir}/*{species}*")]
         results.extend([f"{dest}/{f}" for f in files])
+
+    print(results)
     return results
 
 def get_jsonl_path():
@@ -73,9 +78,9 @@ def get_jsonl_path():
 rule stage_files_for_species:
     log: "staging.log"
     input:
-        directories=get_bioentities_directories_to_stage(config['species'])
+        directories=get_bioentities_directories_to_stage()
     output:
-        staged_files=get_all_staging_files(config['species'])
+        staged_files=get_all_staging_files()
     params:
         species=config['species']
     run:
@@ -83,10 +88,11 @@ rule stage_files_for_species:
             command=f"""
                     dest={get_destination_dir(dir)}
                     mkdir -p \$dest
-                    rsync --include '*{params.species}*' {dir}/ \$dest
+                    rsync -a --include '*{params.species}*' {dir}/ \$dest
                     """
             shell(command)
             print(f"{dir} staged")
+
 
 rule run_bioentities_JSONL_creation:
     container: "docker://quay.io/ebigxa/atlas-index-base:1.0"
@@ -123,14 +129,13 @@ rule delete_species_bioentities_index:
     input:
         jsonl=rules.run_bioentities_JSONL_creation.output.jsonl
     output:
-        deleted=f"{config['species']}.index.deleted"
+        deleted=touch(f"{config['species']}.index.deleted")
     shell:
         """
         source {params.atlas_env_file}
         export SPECIES={params.species}
 
         {workflow.basedir}/index-bioentities/bin/delete_bioentities_species.sh
-        touch {output.deleted}
         """
 
 rule load_species_into_bioentities_index:
@@ -147,7 +152,7 @@ rule load_species_into_bioentities_index:
         jsonl=rules.run_bioentities_JSONL_creation.output.jsonl,
         deleted_confirmation=rules.delete_species_bioentities_index.output.deleted
     output:
-        loaded=f"{config['species']}.index.loaded"
+        loaded=touch(f"{config['species']}.index.loaded")
     shell:
         """
         source {params.atlas_env_file}
@@ -157,5 +162,4 @@ rule load_species_into_bioentities_index:
         export BIOENTITIES_JSONL_PATH={params.output_dir}
 
         {workflow.basedir}/index-bioentities/bin/index_organism_annotations.sh
-        touch {output.loaded}
         """
