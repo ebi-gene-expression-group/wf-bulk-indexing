@@ -3,12 +3,15 @@ import glob
 
 # atom: set grammar=python:
 
-TYPES = ['annotations', 'array_designs', 'go_ens', 'interpro', 'reactome']
+TYPES = ['annotations', 'array_designs', 'go', 'interpro', 'reactome']
 bioentities_directories_to_stage = set()
 
+print(f"ENS version: {config['ens_version']}")
+print(f"ENS GN version: {config['eg_version']}")
+
 def get_version(source):
-    if source == 'ensembl':
-        return config['ens_eg_version']
+    if source == 'ensembl' or source == "ens":
+        return f"{config['ens_version']}_{config['eg_version']}"
     else:
         return config['wbsp_version']
 
@@ -19,26 +22,50 @@ def get_bioentities_directories_to_stage():
 
     The web application code running these processes descides on the species to
     run based on the files it find in the BIOENTITIES path given.
+
+    This is the structure of directories that we aim to match
+    annotations_ensembl_104_51*  annotations_wbps_15      go_ens104_51*
+    array_designs_104_51_15*     ensembl_104_51*          reactome_ens104_51*  wbps_15*
     """
     global bioentities_directories_to_stage
     global TYPES
     species = config['species']
+    print(f"Lenght of set {len(bioentities_directories_to_stage)}")
     if bioentities_directories_to_stage:
         return bioentities_directories_to_stage
     dirs=set()
-    for source in ["ensembl", "wbsp"]:
-        for type in TYPES:
-            dir = f"{config['bioentities_source']}/archive/{type}_{get_version(source)}"
+    prefix=f"{config['bioentities_source']}/archive"
+    for type in TYPES:
+        if type == "array_designs":
+            dir = f"{prefix}/{type}_{get_version('ens')}_{config['wbsp_version']}"
             if os.path.isdir(dir):
+                print(f"{dir} exists")
                 dirs.add(dir)
                 continue
-            dir = f"{config['bioentities_source']}/archive/{type}_{source}_{get_version(source)}"
+        for source in ["ensembl", "wbps", "ens"]:
+            versionSep = "_"
+            if source == "ens":
+                versionSep = ""
+            dir = f"{prefix}/{type}_{get_version(source)}"
             if os.path.isdir(dir):
+                print(f"{dir} exists")
                 dirs.add(dir)
                 continue
-            dir = f"{config['bioentities_source']}/archive/{type}"
+            dir = f"{prefix}/{type}_{source}{versionSep}{get_version(source)}"
             if os.path.isdir(dir):
+                print(f"{dir} exists")
                 dirs.add(dir)
+                continue
+            dir = f"{prefix}/{type}"
+            if os.path.isdir(dir):
+                print(f"{dir} exists")
+                dirs.add(dir)
+                continue
+            dir = f"{prefix}/{source}_{get_version(source)}"
+            if os.path.isdir(dir):
+                print(f"{dir} exists")
+                dirs.add(dir)
+                continue
 
     bioentities_directories_to_stage = dirs
     return bioentities_directories_to_stage
@@ -52,11 +79,12 @@ def get_destination_dir(dir):
     created for the species.
     """
     prefix='bioentity_properties'
-    if 'go_ens' in dir:
-        return f"{prefix}/go"
     for type in TYPES:
         if type in dir:
             return f"{prefix}/{type}"
+    for source in ["ensembl", "wbps"]:
+        if source in dir:
+            return f"{prefix}/{source}"
 
 def get_all_staging_files():
     species = config['species']
@@ -64,7 +92,10 @@ def get_all_staging_files():
     source_dirs = get_bioentities_directories_to_stage()
     for sdir in source_dirs:
         dest = get_destination_dir(sdir)
-        files = [os.path.basename(f) for f in glob(f"{sdir}/*{species}*")]
+        print(f"Looking at {sdir} with destination {dest}")
+        files = [os.path.basename(f) for f in glob.glob(f"{sdir}/{species}*")]
+        if dest.endswith("go"):
+            files = [os.path.basename(f) for f in glob.glob(f"{sdir}/*")]
         results.extend([f"{dest}/{f}" for f in files])
 
     print(results)
@@ -85,11 +116,21 @@ rule stage_files_for_species:
         species=config['species']
     run:
         for dir in input.directories:
-            command=f"""
-                    dest={get_destination_dir(dir)}
-                    mkdir -p \$dest
-                    rsync -a --include '*{params.species}*' {dir}/ \$dest
-                    """
+            dest = get_destination_dir(dir)
+            if dest.endswith("go"):
+                call = f"rsync -a {dir}/* {dest}"
+            else:
+                # some directories which are not "go" will not have anything for our species
+                if not glob.glob(f"{dir}/{params.species}*"):
+                    print(f"Skipping {dir} for {params.species}")
+                    continue
+                call = f"rsync -a {dir}/{params.species}* {dest}"
+
+            print(f"Calling {call}")
+            command = f"""
+                      mkdir -p {dest}
+                      {call}
+                      """
             shell(command)
             print(f"{dir} staged")
 
@@ -98,6 +139,7 @@ rule run_bioentities_JSONL_creation:
     container: "docker://quay.io/ebigxa/atlas-index-base:1.0"
     log: "create_bioentities_jsonl.log"
     input:
+        #staged="staged.done"
         staged_files=rules.stage_files_for_species.output.staged_files
     params:
         bioentities="./",
