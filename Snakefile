@@ -147,17 +147,34 @@ rule run_bioentities_JSONL_creation:
         atlas_env_file=config['atlas_env_file'],
         experiment_files="./experiment_files",
         atlas_exps=config['atlas_exps'],
+        web_app_context=config['web_app_context'],
         exp_design_path=config['atlas_exp_design']
     output:
         jsonl=get_jsonl_path()
     shell:
         """
+        set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
+        exec &> "{log}"
         source {params.atlas_env_file}
 
         export BIOENTITIES={params.bioentities}
         export output_dir={params.output_dir}
         export EXPERIMENT_FILES={params.experiment_files}
         export BIOENTITIES_JSONL_PATH={params.output_dir}
+        export server_port=8081 #fake
+
+        mkdir -p {params.experiment_files}
+        rm -f {params.experiment_files}/magetab
+        rm -f {params.experiment_files}/expdesign
+        ln -s {params.atlas_exps} {params.experiment_files}/magetab
+        ln -s {params.exp_design_path} {params.experiment_files}/expdesign
+        ln -s {params.web_app_context}/species-properties.json {params.experiment_files}/species-properties.json
+        ln -s {params.web_app_context}/release-metadata.json {params.experiment_files}/release-metadata.json
+
+        if [ -f /bin/micromamba ]; then
+            eval "$(/bin/micromamba shell hook -s bash)"
+            micromamba activate "$ENV_NAME"
+        fi
 
         {workflow.basedir}/index-bioentities/bin/create_bioentities_jsonl.sh
         """
@@ -165,6 +182,7 @@ rule run_bioentities_JSONL_creation:
 rule delete_species_bioentities_index:
     container:
         "docker://quay.io/ebigxa/atlas-index-base:1.0"
+    log: "delete_species_bioentities_index.log"
     params:
         atlas_env_file=config['atlas_env_file'],
         species=config['species']
@@ -174,6 +192,8 @@ rule delete_species_bioentities_index:
         deleted=touch(f"{config['species']}.index.deleted")
     shell:
         """
+        set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
+        exec &> "{log}"
         source {params.atlas_env_file}
         export SPECIES={params.species}
 
@@ -183,6 +203,7 @@ rule delete_species_bioentities_index:
 rule load_species_into_bioentities_index:
     container:
         "docker://quay.io/ebigxa/atlas-index-base:1.0"
+    log: "load_species_into_bioentities_index.log"
     params:
         bioentities="./",
         output_dir=config['output_dir'],
@@ -197,6 +218,8 @@ rule load_species_into_bioentities_index:
         loaded=touch(f"{config['species']}.index.loaded")
     shell:
         """
+        set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
+        exec &> "{log}"
         source {params.atlas_env_file}
 
         export BIOENTITIES={params.bioentities}
