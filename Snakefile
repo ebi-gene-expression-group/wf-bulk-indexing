@@ -8,6 +8,13 @@ TYPES = ['annotations', 'array_designs', 'go', 'interpro', 'reactome', 'mirbase'
 bioentities_directories_to_stage = set()
 staging_files = set()
 
+micromamba_env = """
+                 if [ -f /bin/micromamba ]; then
+                     eval "$(/bin/micromamba shell hook -s bash)"
+                     micromamba activate "$ENV_NAME"
+                 fi
+                 """
+
 
 def get_bioentities_directories_to_stage():
     """
@@ -171,10 +178,7 @@ rule run_bioentities_JSONL_creation:
         ln -sf {params.web_app_context}/species-properties.json {params.experiment_files}/species-properties.json
         ln -sf {params.web_app_context}/release-metadata.json {params.experiment_files}/release-metadata.json
 
-        if [ -f /bin/micromamba ]; then
-            eval "$(/bin/micromamba shell hook -s bash)"
-            micromamba activate "$ENV_NAME"
-        fi
+        {micromamba_env}
 
         {workflow.basedir}/index-bioentities/bin/create_bioentities_jsonl.sh
         """
@@ -197,10 +201,7 @@ rule delete_species_bioentities_index:
         source {params.atlas_env_file}
         export SPECIES={params.species}
 
-        if [ -f /bin/micromamba ]; then
-            eval "$(/bin/micromamba shell hook -s bash)"
-            micromamba activate "$ENV_NAME"
-        fi
+        {micromamba_env}
 
         {workflow.basedir}/index-bioentities/bin/delete_bioentities_species.sh
         """
@@ -234,10 +235,7 @@ rule load_species_into_bioentities_index:
         export SPECIES={params.species}
         export server_port=8081 #fake
 
-        if [ -f /bin/micromamba ]; then
-            eval "$(/bin/micromamba shell hook -s bash)"
-            micromamba activate "$ENV_NAME"
-        fi
+        {micromamba_env}
 
         # for the json_loader script which is called in turn by index_organism_annotations.
         export PATH={workflow.basedir}/index-bioentities/bin:$PATH
