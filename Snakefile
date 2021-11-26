@@ -1,10 +1,11 @@
 import os
 import glob
-
+import re
 # atom: set grammar=python:
 
-TYPES = ['annotations', 'array_designs', 'go', 'interpro', 'reactome']
+TYPES = ['annotations', 'array_designs', 'go', 'interpro', 'reactome', 'mirbase']
 bioentities_directories_to_stage = set()
+staging_files = set()
 
 print(f"ENS version: {config['ens_version']}")
 print(f"ENS GN version: {config['eg_version']}")
@@ -34,76 +35,73 @@ def get_bioentities_directories_to_stage():
     if bioentities_directories_to_stage:
         return bioentities_directories_to_stage
     dirs=set()
-    prefix=f"{config['bioentities_source']}/archive"
+    prefix=f"{config['bioentities_source']}"
     for type in TYPES:
-        if type == "array_designs":
-            dir = f"{prefix}/{type}_{get_version('ens')}_{config['wbsp_version']}"
-            if os.path.isdir(dir):
-                print(f"{dir} exists")
-                dirs.add(dir)
-                continue
-        for source in ["ensembl", "wbps", "ens"]:
-            versionSep = "_"
-            if source == "ens":
-                versionSep = ""
-            dir = f"{prefix}/{type}_{get_version(source)}"
-            if os.path.isdir(dir):
-                print(f"{dir} exists")
-                dirs.add(dir)
-                continue
-            dir = f"{prefix}/{type}_{source}{versionSep}{get_version(source)}"
-            if os.path.isdir(dir):
-                print(f"{dir} exists")
-                dirs.add(dir)
-                continue
-            dir = f"{prefix}/{type}"
-            if os.path.isdir(dir):
-                print(f"{dir} exists")
-                dirs.add(dir)
-                continue
-            dir = f"{prefix}/{source}_{get_version(source)}"
-            if os.path.isdir(dir):
-                print(f"{dir} exists")
-                dirs.add(dir)
-                continue
+        dir = f"{prefix}/{type}"
+        if os.path.isdir(dir):
+            print(f"{dir} exists")
+            dirs.add(dir)
 
     bioentities_directories_to_stage = dirs
     return bioentities_directories_to_stage
 
-def get_destination_dir(dir):
-    """
-    Provides the directories where the files will be staged to
-    for the bioentities properties, based on the source directory.
 
-    Assumes that the worklfow runs in the temporary bioentities
-    created for the species.
-    """
+def get_destination_dir(dir):
     prefix='bioentity_properties'
-    for type in TYPES:
-        if type in dir:
-            return f"{prefix}/{type}"
-    for source in ["ensembl", "wbps"]:
-        if source in dir:
-            return f"{prefix}/{source}"
+    return f"{prefix}/{os.path.basename(dir)}"
 
 def get_all_staging_files():
+    global staging_files
+    if staging_files:
+        return staging_files
     species = config['species']
     results = []
     source_dirs = get_bioentities_directories_to_stage()
     for sdir in source_dirs:
         dest = get_destination_dir(sdir)
         print(f"Looking at {sdir} with destination {dest}")
-        files = [os.path.basename(f) for f in glob.glob(f"{sdir}/{species}*")]
-        if dest.endswith("go"):
-            files = [os.path.basename(f) for f in glob.glob(f"{sdir}/*")]
+        if dest.endswith("go") or dest.endswith('interpro'):
+            files = [os.path.basename(f) for f in glob.glob(f"{sdir}/*.tsv")]
+        else:
+            files = [os.path.basename(f) for f in glob.glob(f"{sdir}/{species}*.tsv")]
+            # We have cases where the files are buried one directory below :-(
+            files.extend([os.path.basename(f) for f in glob.glob(f"{sdir}/*/{species}*.tsv")])
         results.extend([f"{dest}/{f}" for f in files])
 
-    print(results)
-    return results
+    staging_files.update(results)
+    return staging_files
 
-def get_jsonl_path():
-    return f"{config['output_dir']}/{config['species']}.jsonl"
+wbps_annotations_re = re.compile(r"annotations.*wbps")
+ens_annotations_re = re.compile(r"annotations.*ens")
+array_designs_re = re.compile(r"array_designs.*\.(A-[A-Z]{4}-[0-9]+)\.tsv")
 
+def get_jsonl_label(input):
+    global wbps_annotations_re
+    global ens_annotations_re
+    global array_designs_re
+
+    if "reactome" in input:
+        return "reactome"
+    if "mirbase" in input:
+        return "mature_mirna"
+    if wbps_annotations_re.search(input):
+        return "wbpsgene"
+    if ens_annotations_re.search(input):
+        return "ensgene"
+    m_array = array_designs_re.search(input)
+    if m_array:
+        return m_array.group(1)
+
+
+def get_jsonl_paths():
+    inputs_for_jsonl = get_all_staging_files()
+    jsonls = set()
+    for input in inputs_for_jsonl:
+        json_label = get_jsonl_label(input)
+        if json_label:
+            jsonls.add(f"{config['output_dir']}/{config['species']}.{json_label}.jsonl")
+    print(f"Number of JSONLs expected: {len(jsonls)}")
+    return jsonls
 
 
 rule stage_files_for_species:
@@ -115,19 +113,24 @@ rule stage_files_for_species:
     params:
         species=config['species']
     run:
+        rsync_options = '-a --delete'
         for dir in input.directories:
             dest = get_destination_dir(dir)
-            if dest.endswith("go"):
-                call = f"rsync -a {dir}/* {dest}"
-            else:
+            if dest.endswith("go") or dest.endswith("interpro"):
+                call = f"rsync {rsync_options} --include=*.tsv  --exclude=* {dir}/* {dest}"
+            elif not glob.glob(f"{dir}/{params.species}*.tsv") and not glob.glob(f"{dir}/*/{params.species}*.tsv"):
+                print(f"Skipping {dir} for {params.species}")
+                continue
+            elif dest.endswith('annotations') or dest.endswith('array_designs'):
                 # some directories which are not "go" will not have anything for our species
-                if not glob.glob(f"{dir}/{params.species}*"):
-                    print(f"Skipping {dir} for {params.species}")
-                    continue
-                call = f"rsync -a {dir}/{params.species}* {dest}"
+                call = f"rsync {rsync_options} {dir}/**/{params.species}*.tsv {dest}"
+            elif dest.endswith('reactome') or dest.endswith('mirbase'):
+                call = f"rsync {rsync_options} {dir}/{params.species}*.tsv {dest}"
+
 
             print(f"Calling {call}")
             command = f"""
+                      exec &> "{log}"
                       mkdir -p {dest}
                       {call}
                       """
@@ -149,8 +152,10 @@ rule run_bioentities_JSONL_creation:
         atlas_exps=config['atlas_exps'],
         web_app_context=config['web_app_context'],
         exp_design_path=config['atlas_exp_design']
+    resources:
+        mem_mb=16000
     output:
-        jsonl=get_jsonl_path()
+        jsonl=get_jsonl_paths()
     shell:
         """
         set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
@@ -164,12 +169,13 @@ rule run_bioentities_JSONL_creation:
         export server_port=8081 #fake
 
         mkdir -p {params.experiment_files}
+        mkdir -p {params.output_dir}
         rm -f {params.experiment_files}/magetab
         rm -f {params.experiment_files}/expdesign
-        ln -s {params.atlas_exps} {params.experiment_files}/magetab
-        ln -s {params.exp_design_path} {params.experiment_files}/expdesign
-        ln -s {params.web_app_context}/species-properties.json {params.experiment_files}/species-properties.json
-        ln -s {params.web_app_context}/release-metadata.json {params.experiment_files}/release-metadata.json
+        ln -sf {params.atlas_exps} {params.experiment_files}/magetab
+        ln -sf {params.exp_design_path} {params.experiment_files}/expdesign
+        ln -sf {params.web_app_context}/species-properties.json {params.experiment_files}/species-properties.json
+        ln -sf {params.web_app_context}/release-metadata.json {params.experiment_files}/release-metadata.json
 
         if [ -f /bin/micromamba ]; then
             eval "$(/bin/micromamba shell hook -s bash)"
@@ -230,6 +236,11 @@ rule load_species_into_bioentities_index:
         export BIOENTITIES={params.bioentities}
         export EXPERIMENT_FILES={params.experiment_files}
         export BIOENTITIES_JSONL_PATH={params.output_dir}
+
+        if [ -f /bin/micromamba ]; then
+            eval "$(/bin/micromamba shell hook -s bash)"
+            micromamba activate "$ENV_NAME"
+        fi
 
         {workflow.basedir}/index-bioentities/bin/index_organism_annotations.sh
         """
