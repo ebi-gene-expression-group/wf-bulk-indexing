@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import glob
 import re
 # atom: set grammar=python:
@@ -116,6 +117,8 @@ rule stage_files_for_species:
         rsync_options = '-a --delete'
         for dir in input.directories:
             dest = get_destination_dir(dir)
+            # even if there is no content, the web app context will expect the dir.
+            Path(dest).mkdir(parents=True, exist_ok=True)
             if dest.endswith("go") or dest.endswith("interpro"):
                 call = f"rsync {rsync_options} --include=*.tsv  --exclude=* {dir}/* {dest}"
             elif not glob.glob(f"{dir}/{params.species}*.tsv") and not glob.glob(f"{dir}/*/{params.species}*.tsv"):
@@ -142,7 +145,6 @@ rule run_bioentities_JSONL_creation:
     container: "docker://quay.io/ebigxa/atlas-index-base:1.0"
     log: "create_bioentities_jsonl.log"
     input:
-        #staged="staged.done"
         staged_files=rules.stage_files_for_species.output.staged_files
     params:
         bioentities="./",
