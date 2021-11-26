@@ -8,14 +8,6 @@ TYPES = ['annotations', 'array_designs', 'go', 'interpro', 'reactome', 'mirbase'
 bioentities_directories_to_stage = set()
 staging_files = set()
 
-print(f"ENS version: {config['ens_version']}")
-print(f"ENS GN version: {config['eg_version']}")
-
-def get_version(source):
-    if source == 'ensembl' or source == "ens":
-        return f"{config['ens_version']}_{config['eg_version']}"
-    else:
-        return config['wbsp_version']
 
 def get_bioentities_directories_to_stage():
     """
