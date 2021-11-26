@@ -223,7 +223,7 @@ rule load_species_into_bioentities_index:
         atlas_env_file=config['atlas_env_file'],
         experiment_files="./experiment_files",
         atlas_exps=config['atlas_exps'],
-        exp_design_path=config['atlas_exp_design']
+        exp_design_path=config['atlas_exp_design'],
         species=config['species']
     input:
         jsonl=rules.run_bioentities_JSONL_creation.output.jsonl,
@@ -246,6 +246,9 @@ rule load_species_into_bioentities_index:
             eval "$(/bin/micromamba shell hook -s bash)"
             micromamba activate "$ENV_NAME"
         fi
+
+        # for the json_loader script which is called in turn by index_organism_annotations.
+        export PATH={workflow.basedir}/index-bioentities/bin:$PATH
 
         {workflow.basedir}/index-bioentities/bin/index_organism_annotations.sh
         """
