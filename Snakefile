@@ -197,6 +197,11 @@ rule delete_species_bioentities_index:
         source {params.atlas_env_file}
         export SPECIES={params.species}
 
+        if [ -f /bin/micromamba ]; then
+            eval "$(/bin/micromamba shell hook -s bash)"
+            micromamba activate "$ENV_NAME"
+        fi
+
         {workflow.basedir}/index-bioentities/bin/delete_bioentities_species.sh
         """
 
