@@ -224,6 +224,7 @@ rule load_species_into_bioentities_index:
         experiment_files="./experiment_files",
         atlas_exps=config['atlas_exps'],
         exp_design_path=config['atlas_exp_design']
+        species=config['species']
     input:
         jsonl=rules.run_bioentities_JSONL_creation.output.jsonl,
         deleted_confirmation=rules.delete_species_bioentities_index.output.deleted
@@ -238,6 +239,8 @@ rule load_species_into_bioentities_index:
         export BIOENTITIES={params.bioentities}
         export EXPERIMENT_FILES={params.experiment_files}
         export BIOENTITIES_JSONL_PATH={params.output_dir}
+        export SPECIES={params.species}
+        export server_port=8081 #fake
 
         if [ -f /bin/micromamba ]; then
             eval "$(/bin/micromamba shell hook -s bash)"
