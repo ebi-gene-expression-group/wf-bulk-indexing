@@ -19,7 +19,7 @@ include: "Snakefile"
 
 def get_outputs_bioentities():
     if config['target'] == "load":
-        return f"{config['species']}.index.loaded"
+        return [f"{config['species']}.index.loaded", "exp_designs_updates.txt", "update_coexpressions.txt"]
     elif config['target'] == "jsonl":
         return get_jsonl_paths()
 

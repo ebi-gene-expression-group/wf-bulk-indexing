@@ -3,3 +3,6 @@ delete_species_bioentities_index:
 
 load_species_into_bioentities_index:
   - "-g <group-for-solr>"
+
+get_accessions_for_species:
+  - "-g <group-for-db>"

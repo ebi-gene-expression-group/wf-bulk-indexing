@@ -103,6 +103,29 @@ def get_jsonl_paths():
     print(f"Number of JSONLs expected: {len(jsonls)}")
     return jsonls
 
+def species_for_db(species):
+    return species.replace("_", " ").capitalize()
+
+rule get_accessions_for_species:
+    log: "get_accessions_for_species.log"
+    params:
+        species=species_for_db(config['species']),
+        atlas_env_file=config['atlas_env_file']
+    output:
+        accessions=temp("species_accessions.txt"),
+        baseline_accessions=temp("species_baseline_accessions.txt")
+    conda: "envs/postgres.yaml"
+    shell:
+        """
+        set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
+        exec &> "{log}"
+        source {params.atlas_env_file}
+
+        psql -c "COPY (SELECT accession FROM experiment WHERE species = '{params.species}') TO STDOUT WITH NULL AS ''" \
+             -v ON_ERROR_STOP=1 $dbConnection > {output.accessions}
+        psql -c "COPY (SELECT accession FROM experiment WHERE species = '{params.species}' AND type = 'RNASEQ_MRNA_BASELINE' ) TO STDOUT WITH NULL AS ''" \
+             -v ON_ERROR_STOP=1 $dbConnection > {output.baseline_accessions}
+        """
 
 rule stage_files_for_species:
     log: "staging.log"
@@ -140,6 +163,99 @@ rule stage_files_for_species:
             print(f"{dir} staged")
 
 
+rule prepare_directories_and_links:
+    input:
+        staged_files=rules.stage_files_for_species.output.staged_files
+    params:
+        bioentities="./",
+        output_dir=config['output_dir'],
+        atlas_env_file=config['atlas_env_file'],
+        experiment_files="./experiment_files",
+        atlas_exps=config['atlas_exps'],
+        web_app_context=config['web_app_context'],
+        exp_design_path=config['atlas_exp_design']
+    output:
+        dirs_prepared=touch("dirs_prepared")
+    shell:
+        """
+        mkdir -p {params.experiment_files}
+        mkdir -p {params.output_dir}
+        rm -f {params.experiment_files}/magetab
+        rm -f {params.experiment_files}/expdesign
+        ln -sf {params.atlas_exps} {params.experiment_files}/magetab
+        ln -sf {params.exp_design_path} {params.experiment_files}/expdesign
+        ln -sf {params.web_app_context}/species-properties.json {params.experiment_files}/species-properties.json
+        ln -sf {params.web_app_context}/release-metadata.json {params.experiment_files}/release-metadata.json
+        """
+
+rule update_experiment_designs:
+    container: "docker://quay.io/ebigxa/atlas-index-base:1.2"
+    log: "update_experiment_designs.log"
+    params:
+        bioentities="./",
+        output_dir=config['output_dir'],
+        atlas_env_file=config['atlas_env_file'],
+        experiment_files="./experiment_files",
+        atlas_exps=config['atlas_exps'],
+        web_app_context=config['web_app_context'],
+        exp_design_path=config['atlas_exp_design']
+    input:
+        accessions=rules.get_accessions_for_species.output.accessions,
+        dirs_prepared=rules.prepare_directories_and_links.output.dirs_prepared
+    output:
+        done=touch("exp_designs_updates.txt")
+    shell:
+        """
+        set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
+        exec &> "{log}"
+        source {params.atlas_env_file}
+
+        export BIOENTITIES={params.bioentities}
+        export output_dir={params.output_dir}
+        export EXPERIMENT_FILES={params.experiment_files}
+        export BIOENTITIES_JSONL_PATH={params.output_dir}
+        export server_port=8081 #fake
+
+        {micromamba_env}
+
+        export ACCESSION=$(cat {input.accessions} | tr '\n' ',' | sed s/,$// )
+
+        {workflow.basedir}/index-gxa/bin/update_experiment_designs_cli.sh
+        """
+
+rule update_coexpressions:
+    container: "docker://quay.io/ebigxa/atlas-index-base:1.2"
+    log: "update_coexpressions.log"
+    params:
+        bioentities="./",
+        output_dir=config['output_dir'],
+        atlas_env_file=config['atlas_env_file'],
+        experiment_files="experiment_files"
+    input:
+        accessions=rules.get_accessions_for_species.output.baseline_accessions,
+        dirs_prepared=rules.prepare_directories_and_links.output.dirs_prepared
+    output:
+        done=touch("update_coexpressions.txt")
+    shell:
+        """
+        set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
+        exec &> "{log}"
+        source {params.atlas_env_file}
+
+        export BIOENTITIES={params.bioentities}
+        export output_dir={params.output_dir}
+        export EXPERIMENT_FILES={params.experiment_files}
+        export BIOENTITIES_JSONL_PATH={params.output_dir}
+        export server_port=8081 #fake
+
+        {micromamba_env}
+
+        export ACCESSION=$(cat {input.accessions} | tr '\n' ',' | sed 's/,$//' )
+
+        {workflow.basedir}/index-gxa/bin/update_coexpressions_cli.sh
+        """
+
+
 rule run_bioentities_JSONL_creation:
     container: "docker://quay.io/ebigxa/atlas-index-base:1.0"
     log: "create_bioentities_jsonl.log"
@@ -168,15 +284,6 @@ rule run_bioentities_JSONL_creation:
         export EXPERIMENT_FILES={params.experiment_files}
         export BIOENTITIES_JSONL_PATH={params.output_dir}
         export server_port=8081 #fake
-
-        mkdir -p {params.experiment_files}
-        mkdir -p {params.output_dir}
-        rm -f {params.experiment_files}/magetab
-        rm -f {params.experiment_files}/expdesign
-        ln -sf {params.atlas_exps} {params.experiment_files}/magetab
-        ln -sf {params.exp_design_path} {params.experiment_files}/expdesign
-        ln -sf {params.web_app_context}/species-properties.json {params.experiment_files}/species-properties.json
-        ln -sf {params.web_app_context}/release-metadata.json {params.experiment_files}/release-metadata.json
 
         {micromamba_env}
 
