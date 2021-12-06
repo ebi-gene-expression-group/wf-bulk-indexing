@@ -104,7 +104,29 @@ def get_jsonl_paths():
     return jsonls
 
 def species_for_db(species):
+    """
+    Atlas database and web app use
+    species as "Homo sapiens" instead of "homo_sapiens".
+    """
     return species.replace("_", " ").capitalize()
+
+def get_mem_mb(wildcards, attempt):
+    """
+    To adjust resources in the rules
+    attemps = reiterations + 1
+    Max number attemps = 8
+    """
+    mem_avail = [ 2, 2, 4, 8, 16, 64, 128, 256 ]
+    return mem_avail[attempt-1] * 1000
+
+def get_mem_mb_coexp(wildcards, attempt):
+    """
+    To adjust resources in the rules
+    attemps = reiterations + 1
+    Max number attemps = 8
+    """
+    mem_avail = [ 8, 8, 16, 32, 64, 128, 256, 512 ]
+    return mem_avail[attempt-1] * 1000
 
 rule get_accessions_for_species:
     log: "get_accessions_for_species.log"
@@ -191,6 +213,8 @@ rule prepare_directories_and_links:
 rule update_experiment_designs:
     container: "docker://quay.io/ebigxa/atlas-index-base:1.2"
     log: "update_experiment_designs.log"
+    resources:
+        mem_mb=get_mem_mb
     params:
         bioentities="./",
         output_dir=config['output_dir'],
@@ -218,7 +242,7 @@ rule update_experiment_designs:
 
         {micromamba_env}
 
-        export ACCESSION=$(cat {input.accessions} | tr '\n' ',' | sed s/,$// )
+        export ACCESSIONS=$(cat {input.accessions} | tr '\\n' ',' | sed s/,$// )
 
         {workflow.basedir}/index-gxa/bin/update_experiment_designs_cli.sh
         """
@@ -226,6 +250,8 @@ rule update_experiment_designs:
 rule update_coexpressions:
     container: "docker://quay.io/ebigxa/atlas-index-base:1.2"
     log: "update_coexpressions.log"
+    resources:
+        mem_mb=get_mem_mb_coexp
     params:
         bioentities="./",
         output_dir=config['output_dir'],
@@ -250,7 +276,7 @@ rule update_coexpressions:
 
         {micromamba_env}
 
-        export ACCESSION=$(cat {input.accessions} | tr '\n' ',' | sed 's/,$//' )
+        export ACCESSIONS=$(cat {input.accessions} | tr '\\n' ',' | sed 's/,$//' )
 
         {workflow.basedir}/index-gxa/bin/update_coexpressions_cli.sh
         """
