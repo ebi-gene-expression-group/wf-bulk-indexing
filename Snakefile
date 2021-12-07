@@ -375,3 +375,128 @@ rule load_species_into_bioentities_index:
 
         {workflow.basedir}/index-bioentities/bin/index_organism_annotations.sh
         """
+
+rule analytics_bioentities_mapping:
+    log: "analytics_mapping_files.log"
+    container:
+        "docker://quay.io/ebigxa/atlas-index-base:1.2"
+    input:
+        # This could optionally be either that file or a file given with specific accessions to redo.
+        # or maybe the accessions broken in chunks.
+        accessions=rules.get_accessions_for_species.output.accessions,
+        index_loaded=rules.load_species_into_bioentities_index.output.loaded
+    params:
+        bioentities="./",
+        output_dir=f"{config['output_dir']}/bioentities_analytics_mappings",
+        atlas_env_file=config['atlas_env_file'],
+        experiment_files="experiment_files",
+        species=config['species']
+    output:
+        created=touch(f"{config['species']}.analytics_bioentities_mapping.txt"),
+        mappings_file=f"{config['output_dir']}/bioentities_analytics_mappings/{config['species']}.map.bin"
+    resources:
+        mem_mb=get_mem_mb
+    shell:
+        """
+        set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
+        exec &> "{log}"
+
+        source {params.atlas_env_file}
+
+        export BIOENTITIES={params.bioentities}
+        export EXPERIMENT_FILES={params.experiment_files}
+        export output_dir={params.output_dir}
+        export SPECIES={params.species}
+        export server_port=8081 #fake
+
+        {micromamba_env}
+
+        export ACCESSIONS=$(cat {input.accessions} | tr '\\n' ',' | sed 's/,$//' )
+
+        mkdir -p $output_dir
+
+        {workflow.basedir}/index-bioentities/bin/create_bioentities_property_map.sh
+        """
+
+rule create_analytics_jsonl_files:
+    log: "create_analytics_jsonl_files.log"
+    container:
+        "docker://quay.io/ebigxa/atlas-index-base:1.2"
+    input:
+        # This could optionally be either that file or a file given with specific accessions to redo.
+        # or maybe the accessions broken in chunks.
+        accessions=rules.get_accessions_for_species.output.accessions,
+        mappings_file=rules.analytics_bioentities_mapping.output.mappings_file
+    resources:
+        mem_mb=get_mem_mb
+    params:
+        bioentities="./",
+        output_dir=f"{config['output_dir']}/analytics_jsonl_files",
+        mappings_directory=rules.analytics_bioentities_mapping.params.output_dir,
+        atlas_env_file=config['atlas_env_file'],
+        experiment_files="experiment_files",
+        species=config['species']
+    output:
+        created=touch("analytics_jsonl_files.txt")
+    shell:
+        """
+        set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
+        exec &> "{log}"
+
+        source {params.atlas_env_file}
+
+        export BIOENTITIES={params.bioentities}
+        export EXPERIMENT_FILES={params.experiment_files}
+        export output_dir={params.output_dir}
+        export SPECIES={params.species}
+        export server_port=8081 #fake
+        export BIN_MAP={params.mappings_directory}
+
+        {micromamba_env}
+
+        export ACCESSIONS=$(cat {input.accessions} | tr '\\n' ',' | sed 's/,$//' )
+
+        mkdir -p {params.output_dir}
+
+        {workflow.basedir}/index-gxa/bin/generate_analytics_JSONL_files.sh
+        """
+
+rule load_bulk_analytics_index:
+    log: "load_bulk_analytics_index.log"
+    container:
+        "docker://quay.io/ebigxa/atlas-index-base:1.2"
+    input:
+        jsonl_created=rules.create_analytics_jsonl_files.output.created,
+        accessions=rules.get_accessions_for_species.output.accessions
+    params:
+        bioentities="./",
+        output_dir=f"{config['output_dir']}/analytics_jsonl_files",
+        analytics_jsonl_dir=rules.create_analytics_jsonl_files.params.output_dir,
+        atlas_env_file=config['atlas_env_file'],
+        experiment_files="experiment_files",
+        species=config['species']
+    output:
+        loaded=touch("analytics_index_loaded.txt")
+    shell:
+        """
+        set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
+        exec &> "{log}"
+
+        source {params.atlas_env_file}
+
+        export BIOENTITIES={params.bioentities}
+        export EXPERIMENT_FILES={params.experiment_files}
+        export SPECIES={params.species}
+        export server_port=8081 #fake
+
+        {micromamba_env}
+
+        export PATH={workflow.basedir}/index-gxa/bin:$PATH
+
+        export analytics_jsonl_dir={params.analytics_jsonl_dir}
+        export ACCESSIONS=$(cat {input.accessions} | tr '\\n' ',' | sed 's/,$//' )
+
+        {workflow.basedir}/index-gxa/bin/gxa-index-set-autocreate.sh
+        {workflow.basedir}/index-gxa/bin/load_analytics_files_in_Solr.sh
+        {workflow.basedir}/index-gxa/bin/gxa-index-set-no-autocreate.sh
+        """
