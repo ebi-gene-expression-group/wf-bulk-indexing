@@ -2,18 +2,30 @@ import os
 from pathlib import Path
 import glob
 import re
+from textwrap import dedent
 # atom: set grammar=python:
 
 TYPES = ['annotations', 'array_designs', 'go', 'interpro', 'reactome', 'mirbase']
 bioentities_directories_to_stage = set()
 staging_files = set()
 
-micromamba_env = """
+micromamba_env = dedent("""
                  if [ -f /bin/micromamba ]; then
                      eval "$(/bin/micromamba shell hook -s bash)"
                      micromamba activate "$ENV_NAME"
                  fi
-                 """
+                 """)
+
+get_missing_accessions = dedent("""
+                         # needs $prefix (a directory) defined
+                         export failed_accessions_output=$prefix"/failed_accessions.txt"
+                         done_accessions=$prefix"/done_accessions.txt"
+                         if [ -f $done_accessions ]; then
+                             #find lines only in input_accessions (that haven't been done)
+                             comm -23 <( sort -u $input_accessions ) <( sort -u $done_accessions ) > $prefix"/missing_accessions.txt"
+                             input_accessions=$prefix"/missing_accessions.txt"
+                         fi
+                         """)
 
 
 def get_bioentities_directories_to_stage():
@@ -149,6 +161,22 @@ rule get_accessions_for_species:
              -v ON_ERROR_STOP=1 $dbConnection > {output.baseline_accessions}
         """
 
+checkpoint divide_accessions_into_chunks:
+    log: "divide_accessions_into_chunks.log"
+    params:
+        lines_per_split=50
+    input:
+        accessions=rules.get_accessions_for_species.output.accessions,
+        baseline_accessions=rules.get_accessions_for_species.output.baseline_accessions
+    output:
+        done=touch("divide_accessions_into_chunks.done"),
+    shell:
+        """
+        # This will generate accessions_01, accessions_02, etc and the same for baseline_accessions_
+        split -l {params.lines_per_split} -d {input.accessions} accessions_
+        split -l {params.lines_per_split} -d {input.baseline_accessions} baseline_accessions_
+        """
+
 rule stage_files_for_species:
     log: "staging.log"
     input:
@@ -211,25 +239,27 @@ rule prepare_directories_and_links:
         """
 
 rule update_experiment_designs:
-    container: "docker://quay.io/ebigxa/atlas-index-base:1.2"
-    log: "update_experiment_designs.log"
+    container: "docker://quay.io/ebigxa/atlas-index-base:1.3"
+    log: "update_experiment_designs/{chunk}/update_experiment_designs.log"
     resources:
         mem_mb=get_mem_mb
     params:
         bioentities="./",
-        output_dir=config['output_dir'],
+        output_dir="update_experiment_designs/{chunk}",
         atlas_env_file=config['atlas_env_file'],
         experiment_files="./experiment_files",
         atlas_exps=config['atlas_exps'],
         web_app_context=config['web_app_context'],
         exp_design_path=config['atlas_exp_design']
     input:
-        accessions=rules.get_accessions_for_species.output.accessions,
+        accessions="accessions_{chunk}",
         dirs_prepared=rules.prepare_directories_and_links.output.dirs_prepared
     output:
-        done=touch("exp_designs_updates.txt")
+        done=touch("update_experiment_designs/{chunk}/exp_designs_updates.txt")
     shell:
         """
+        prefix={params.output_dir}
+        mkdir -p $prefix
         set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
         exec &> "{log}"
         source {params.atlas_env_file}
@@ -237,33 +267,49 @@ rule update_experiment_designs:
         export BIOENTITIES={params.bioentities}
         export output_dir={params.output_dir}
         export EXPERIMENT_FILES={params.experiment_files}
-        export BIOENTITIES_JSONL_PATH={params.output_dir}
         export server_port=8081 #fake
+
+        input_accessions={input.accessions}
 
         {micromamba_env}
 
-        export ACCESSIONS=$(cat {input.accessions} | tr '\\n' ',' | sed s/,$// )
+        {get_missing_accessions}
 
-        {workflow.basedir}/index-gxa/bin/update_experiment_designs_cli.sh
+        # only run if we have accessions to run (>0)
+        if [ $(wc -l $input_accessions | awk '{{ print $1 }}') -gt 0 ]; then
+            export ACCESSIONS=$(cat $input_accessions | tr '\\n' ',' | sed 's/,$//' )
+            set +e
+            {workflow.basedir}/index-gxa/bin/update_experiment_designs_cli.sh
+            status=$?
+            touch $failed_accessions_output # in case there was no failure.
+            # accessions done now, input accessions that are not in failed -- append to all done accessions
+            comm -23 <( sort -u $input_accessions ) <( sort -u $failed_accessions_output ) >> $done_accessions
+            set -e
+            exit $status
+        else
+            echo "No more accessions to be done on this retry."
+        fi
         """
 
 rule update_coexpressions:
     container: "docker://quay.io/ebigxa/atlas-index-base:1.2"
-    log: "update_coexpressions.log"
+    log: "update_coexpressions/{chunk}/update_coexpressions.log"
     resources:
         mem_mb=get_mem_mb_coexp
     params:
         bioentities="./",
-        output_dir=config['output_dir'],
+        output_dir="update_coexpressions/{chunk}",
         atlas_env_file=config['atlas_env_file'],
         experiment_files="experiment_files"
     input:
-        accessions=rules.get_accessions_for_species.output.baseline_accessions,
+        baseline_accessions="baseline_accessions_{chunk}",
         dirs_prepared=rules.prepare_directories_and_links.output.dirs_prepared
     output:
-        done=touch("update_coexpressions.txt")
+        done=touch("update_coexpressions/{chunk}/update_coexpressions.txt")
     shell:
         """
+        prefix={params.output_dir}
+        mkdir -p $prefix
         set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
         exec &> "{log}"
         source {params.atlas_env_file}
@@ -271,16 +317,42 @@ rule update_coexpressions:
         export BIOENTITIES={params.bioentities}
         export output_dir={params.output_dir}
         export EXPERIMENT_FILES={params.experiment_files}
-        export BIOENTITIES_JSONL_PATH={params.output_dir}
         export server_port=8081 #fake
+
+        input_accessions={input.baseline_accessions}
 
         {micromamba_env}
 
-        export ACCESSIONS=$(cat {input.accessions} | tr '\\n' ',' | sed 's/,$//' )
+        {get_missing_accessions}
 
         {workflow.basedir}/index-gxa/bin/update_coexpressions_cli.sh
         """
 
+def aggregate_accessions_update_experiment(wildcards):
+    checkpoint_output = checkpoints.divide_accessions_into_chunks.get(**wildcards).output[0]
+    return expand("update_experiment_designs/{chunk}/exp_designs_updates.txt",
+        chunk=glob_wildcards("accessions_{chunk}").chunk)
+
+def aggregate_baseline_accessions_update_coexpression(wildcards):
+    checkpoint_output = checkpoints.divide_accessions_into_chunks.get(**wildcards).output[0]
+    return expand("update_coexpressions/{chunk}/update_coexpressions.txt",
+        chunk=glob_wildcards("baseline_accessions_{chunk}").chunk)
+
+rule aggregate_update_experiment:
+    input: aggregate_accessions_update_experiment
+    output: "exp_designs_updates.done"
+    shell:
+        """
+        touch {output}
+        """
+
+rule aggregate_update_coexpression:
+    input: aggregate_baseline_accessions_update_coexpression
+    output: "coexpression_updates.done"
+    shell:
+        """
+        touch {output}
+        """
 
 rule run_bioentities_JSONL_creation:
     container: "docker://quay.io/ebigxa/atlas-index-base:1.0"
@@ -376,28 +448,31 @@ rule load_species_into_bioentities_index:
         {workflow.basedir}/index-bioentities/bin/index_organism_annotations.sh
         """
 
+######################### analytics #########################
+
 rule analytics_bioentities_mapping:
-    log: "analytics_mapping_files.log"
+    log: "analytics_bioentities_mapping/{chunk}/analytics_mapping.log"
     container:
-        "docker://quay.io/ebigxa/atlas-index-base:1.2"
+        "docker://quay.io/ebigxa/atlas-index-base:1.3"
     input:
         # This could optionally be either that file or a file given with specific accessions to redo.
         # or maybe the accessions broken in chunks.
-        accessions=rules.get_accessions_for_species.output.accessions,
+        accessions="accessions_{chunk}",
         index_loaded=rules.load_species_into_bioentities_index.output.loaded
     params:
         bioentities="./",
-        output_dir=f"{config['output_dir']}/bioentities_analytics_mappings",
+        output_dir="analytics_bioentities_mapping/{chunk}",
         atlas_env_file=config['atlas_env_file'],
         experiment_files="experiment_files",
         species=config['species']
     output:
-        created=touch(f"{config['species']}.analytics_bioentities_mapping.txt"),
-        mappings_file=f"{config['output_dir']}/bioentities_analytics_mappings/{config['species']}.map.bin"
+        mappings_file="analytics_bioentities_mapping/{chunk}/"+f"{config['species']}.map.bin"
     resources:
         mem_mb=get_mem_mb
     shell:
         """
+        prefix={params.output_dir}
+        mkdir -p $prefix
         set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
         exec &> "{log}"
 
@@ -409,37 +484,40 @@ rule analytics_bioentities_mapping:
         export SPECIES={params.species}
         export server_port=8081 #fake
 
+        input_accessions={input.accessions}
+
         {micromamba_env}
 
-        export ACCESSIONS=$(cat {input.accessions} | tr '\\n' ',' | sed 's/,$//' )
+        # we don't break this into done and failed as we need a single mapping file per chunk
 
-        mkdir -p $output_dir
-
+        export ACCESSIONS=$(cat $input_accessions | tr '\\n' ',' | sed 's/,$//' )
         {workflow.basedir}/index-bioentities/bin/create_bioentities_property_map.sh
         """
 
 rule create_analytics_jsonl_files:
-    log: "create_analytics_jsonl_files.log"
+    log: "analytics_jsonl_files/{chunk}/analytics_jsonl_files.log"
     container:
-        "docker://quay.io/ebigxa/atlas-index-base:1.2"
+        "docker://quay.io/ebigxa/atlas-index-base:1.3"
     input:
         # This could optionally be either that file or a file given with specific accessions to redo.
         # or maybe the accessions broken in chunks.
-        accessions=rules.get_accessions_for_species.output.accessions,
-        mappings_file=rules.analytics_bioentities_mapping.output.mappings_file
+        accessions="accessions_{chunk}",
+        mappings_file="analytics_bioentities_mapping/{chunk}/"+f"{config['species']}.map.bin"
     resources:
         mem_mb=get_mem_mb
     params:
         bioentities="./",
-        output_dir=f"{config['output_dir']}/analytics_jsonl_files",
-        mappings_directory=rules.analytics_bioentities_mapping.params.output_dir,
+        output_dir="analytics_jsonl_files/{chunk}",
+        mappings_directory="analytics_bioentities_mapping/{chunk}/",
         atlas_env_file=config['atlas_env_file'],
         experiment_files="experiment_files",
         species=config['species']
     output:
-        created=touch("analytics_jsonl_files.txt")
+        created=touch("analytics_jsonl_files/{chunk}/analytics_jsonl_files.txt")
     shell:
         """
+        prefix={params.output_dir}
+        mkdir -p $prefix
         set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
         exec &> "{log}"
 
@@ -452,33 +530,50 @@ rule create_analytics_jsonl_files:
         export server_port=8081 #fake
         export BIN_MAP={params.mappings_directory}
 
+        input_accessions={input.accessions}
+
         {micromamba_env}
 
-        export ACCESSIONS=$(cat {input.accessions} | tr '\\n' ',' | sed 's/,$//' )
+        {get_missing_accessions}
 
         mkdir -p {params.output_dir}
 
-        {workflow.basedir}/index-gxa/bin/generate_analytics_JSONL_files.sh
+        # only run if we have accessions to run (>0)
+        if [ $(wc -l $input_accessions | awk '{{ print $1 }}') -gt 0 ]; then
+            export ACCESSIONS=$(cat $input_accessions | tr '\\n' ',' | sed 's/,$//' )
+            set +e
+            {workflow.basedir}/index-gxa/bin/generate_analytics_JSONL_files.sh
+            status=$?
+            touch $failed_accessions_output # in case there was no failure.
+            # accessions done now, input accessions that are not in failed -- append to all done accessions
+            comm -23 <( sort -u $input_accessions ) <( sort -u $failed_accessions_output ) >> $done_accessions
+            set -e
+            exit $status
+        else
+            echo "No more accessions to be done on this retry."
+        fi
         """
 
 rule load_bulk_analytics_index:
-    log: "load_bulk_analytics_index.log"
+    log: "load_bulk_analytics_index/{chunk}/load_bulk_analytics_index.log"
     container:
-        "docker://quay.io/ebigxa/atlas-index-base:1.2"
+        "docker://quay.io/ebigxa/atlas-index-base:1.3"
     input:
         jsonl_created=rules.create_analytics_jsonl_files.output.created,
-        accessions=rules.get_accessions_for_species.output.accessions
+        accessions="accessions_{chunk}"
     params:
         bioentities="./",
-        output_dir=f"{config['output_dir']}/analytics_jsonl_files",
-        analytics_jsonl_dir=rules.create_analytics_jsonl_files.params.output_dir,
+        output_dir="load_bulk_analytics_index/{chunk}",
+        analytics_jsonl_dir="analytics_jsonl_files/{chunk}",
         atlas_env_file=config['atlas_env_file'],
         experiment_files="experiment_files",
         species=config['species']
     output:
-        loaded=touch("analytics_index_loaded.txt")
+        loaded=touch("load_bulk_analytics_index/{chunk}/analytics_index_loaded.txt")
     shell:
         """
+        prefix={params.output_dir}
+        mkdir -p $prefix
         set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
         exec &> "{log}"
 
@@ -489,14 +584,43 @@ rule load_bulk_analytics_index:
         export SPECIES={params.species}
         export server_port=8081 #fake
 
+        input_accessions={input.accessions}
+
         {micromamba_env}
+
+        {get_missing_accessions}
 
         export PATH={workflow.basedir}/index-gxa/bin:$PATH
 
-        export analytics_jsonl_dir={params.analytics_jsonl_dir}
-        export ACCESSIONS=$(cat {input.accessions} | tr '\\n' ',' | sed 's/,$//' )
+        # only run if we have accessions to run (>0)
+        if [ $(wc -l $input_accessions | awk '{{ print $1 }}') -gt 0 ]; then
+            export ACCESSIONS=$(cat $input_accessions | tr '\\n' ',' | sed 's/,$//' )
+            export delete_existing=true
+            export analytics_jsonl_dir={params.analytics_jsonl_dir}
+            {workflow.basedir}/index-gxa/bin/gxa-index-set-autocreate.sh
+            set +e
+            {workflow.basedir}/index-gxa/bin/load_analytics_files_in_Solr.sh
+            status=$?
+            touch $failed_accessions_output # in case there was no failure.
+            # accessions done now, input accessions that are not in failed -- append to all done accessions
+            comm -23 <( sort -u $input_accessions ) <( sort -u $failed_accessions_output ) >> $done_accessions
+            {workflow.basedir}/index-gxa/bin/gxa-index-set-no-autocreate.sh
+            set -e
+            exit $status
+        else
+            echo "No more accessions to be done on this retry."
+        fi
+        """
 
-        {workflow.basedir}/index-gxa/bin/gxa-index-set-autocreate.sh
-        {workflow.basedir}/index-gxa/bin/load_analytics_files_in_Solr.sh
-        {workflow.basedir}/index-gxa/bin/gxa-index-set-no-autocreate.sh
+def aggregate_accessions_load_bulk_analytics_index(wildcards):
+    checkpoint_output = checkpoints.divide_accessions_into_chunks.get(**wildcards).output[0]
+    return expand("load_bulk_analytics_index/{chunk}/analytics_index_loaded.txt",
+        chunk=glob_wildcards("accessions_{chunk}").chunk)
+
+rule aggregate_load_bulk_analytics_index:
+    input: aggregate_accessions_load_bulk_analytics_index
+    output: "load_bulk_analytics_index.done"
+    shell:
+        """
+        touch {output}
         """

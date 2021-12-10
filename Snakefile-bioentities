@@ -17,13 +17,16 @@ include: "Snakefile"
 # - bioentities_source: Path to the source bioentities folder (results of E! Update live here)
 
 
-def get_outputs_bioentities():
+def get_outputs_bioentities(wildcards):
     if config['target'] == "load":
-        return [f"{config['species']}.index.loaded", "exp_designs_updates.txt", "update_coexpressions.txt", "analytics_index_loaded.txt"]
+        return [f"{config['species']}.index.loaded",
+                "exp_designs_updates.done",
+                "coexpression_updates.done",
+                "load_bulk_analytics_index.done"]
     elif config['target'] == "jsonl":
         return get_jsonl_paths()
 
 
 rule all:
     input:
-        required_outputs=get_outputs_bioentities()
+        required_outputs=get_outputs_bioentities
