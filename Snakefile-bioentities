@@ -30,3 +30,4 @@ def get_outputs_bioentities(wildcards):
 rule all:
     input:
         required_outputs=get_outputs_bioentities
+
