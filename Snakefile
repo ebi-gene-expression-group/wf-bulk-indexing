@@ -216,6 +216,7 @@ rule stage_files_for_species:
 
 
 rule prepare_directories_and_links:
+    log: "prepare_directories_and_links.log"
     input:
         staged_files=rules.stage_files_for_species.output.staged_files
     params:
@@ -230,6 +231,8 @@ rule prepare_directories_and_links:
         dirs_prepared=touch("dirs_prepared")
     shell:
         """
+        set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
+        exec &> "{log}"
         mkdir -p {params.experiment_files}
         mkdir -p {params.output_dir}
         rm -f {params.experiment_files}/magetab
@@ -357,7 +360,7 @@ rule aggregate_update_coexpression:
         """
 
 rule run_bioentities_JSONL_creation:
-    container: "docker://quay.io/ebigxa/atlas-index-base:1.0"
+    container: "docker://quay.io/ebigxa/atlas-index-base:1.3"
     log: "create_bioentities_jsonl.log"
     input:
         staged_files=rules.stage_files_for_species.output.staged_files
