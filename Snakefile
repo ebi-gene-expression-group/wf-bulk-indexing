@@ -1,8 +1,9 @@
 import os
-from pathlib import Path
 import glob
 import re
 from textwrap import dedent
+from pathlib import Path
+
 # atom: set grammar=python:
 
 TYPES = ['annotations', 'array_designs', 'go', 'interpro', 'reactome', 'mirbase']
@@ -139,6 +140,7 @@ def get_mem_mb_coexp(wildcards, attempt):
     """
     mem_avail = [ 8, 8, 16, 32, 64, 128, 256, 512 ]
     return mem_avail[attempt-1] * 1000
+
 
 rule get_accessions_for_species:
     log: "get_accessions_for_species.log"
