@@ -244,7 +244,7 @@ rule prepare_directories_and_links:
         web_app_context=config['web_app_context'],
         exp_design_path=config['atlas_exp_design']
     output:
-        dirs_prepared=touch("dirs_prepared")
+        dirs_prepared="dirs_prepared"
     shell:
         """
         set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
@@ -257,6 +257,7 @@ rule prepare_directories_and_links:
         ln -sf {params.exp_design_path} {params.experiment_files}/expdesign
         ln -sf {params.web_app_context}/species-properties.json {params.experiment_files}/species-properties.json
         ln -sf {params.web_app_context}/release-metadata.json {params.experiment_files}/release-metadata.json
+        touch {output.dirs_prepared}
         """
 
 rule update_experiment_designs:
@@ -623,7 +624,6 @@ rule load_bulk_analytics_index:
             echo "No more accessions to be done on this retry."
         fi
         """
-
 
 rule aggregate_load_bulk_analytics_index:
     input: aggregate_accessions_load_bulk_analytics_index
