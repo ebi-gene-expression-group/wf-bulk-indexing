@@ -142,6 +142,22 @@ def get_mem_mb_coexp(wildcards, attempt):
     return mem_avail[attempt-1] * 1000
 
 
+def aggregate_accessions_update_experiment(wildcards):
+    checkpoint_output = checkpoints.divide_accessions_into_chunks.get(**wildcards).output[0]
+    return expand("update_experiment_designs/{chunk}/exp_designs_updates.txt",
+        chunk=glob_wildcards("accessions_{chunk}").chunk)
+
+def aggregate_baseline_accessions_update_coexpression(wildcards):
+    checkpoint_output = checkpoints.divide_accessions_into_chunks.get(**wildcards).output[0]
+    return expand("update_coexpressions/{chunk}/update_coexpressions.txt",
+        chunk=glob_wildcards("baseline_accessions_{chunk}").chunk)
+
+def aggregate_accessions_load_bulk_analytics_index(wildcards):
+    checkpoint_output = checkpoints.divide_accessions_into_chunks.get(**wildcards).output[0]
+    return expand("load_bulk_analytics_index/{chunk}/analytics_index_loaded.txt",
+        chunk=glob_wildcards("accessions_{chunk}").chunk)
+
+
 rule get_accessions_for_species:
     log: "get_accessions_for_species.log"
     params:
@@ -333,15 +349,6 @@ rule update_coexpressions:
         {workflow.basedir}/index-gxa/bin/update_coexpressions_cli.sh
         """
 
-def aggregate_accessions_update_experiment(wildcards):
-    checkpoint_output = checkpoints.divide_accessions_into_chunks.get(**wildcards).output[0]
-    return expand("update_experiment_designs/{chunk}/exp_designs_updates.txt",
-        chunk=glob_wildcards("accessions_{chunk}").chunk)
-
-def aggregate_baseline_accessions_update_coexpression(wildcards):
-    checkpoint_output = checkpoints.divide_accessions_into_chunks.get(**wildcards).output[0]
-    return expand("update_coexpressions/{chunk}/update_coexpressions.txt",
-        chunk=glob_wildcards("baseline_accessions_{chunk}").chunk)
 
 rule aggregate_update_experiment:
     input: aggregate_accessions_update_experiment
@@ -617,10 +624,6 @@ rule load_bulk_analytics_index:
         fi
         """
 
-def aggregate_accessions_load_bulk_analytics_index(wildcards):
-    checkpoint_output = checkpoints.divide_accessions_into_chunks.get(**wildcards).output[0]
-    return expand("load_bulk_analytics_index/{chunk}/analytics_index_loaded.txt",
-        chunk=glob_wildcards("accessions_{chunk}").chunk)
 
 rule aggregate_load_bulk_analytics_index:
     input: aggregate_accessions_load_bulk_analytics_index
