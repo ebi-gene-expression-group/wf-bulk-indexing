@@ -244,11 +244,13 @@ rule prepare_directories_and_links:
         web_app_context=config['web_app_context'],
         exp_design_path=config['atlas_exp_design']
     output:
-        dirs_prepared="dirs_prepared"
+        dirs_prepared=touch("dirs_prepared")
     shell:
         """
         set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
         exec &> "{log}"
+        source {params.atlas_env_file}
+
         mkdir -p {params.experiment_files}
         mkdir -p {params.output_dir}
         rm -f {params.experiment_files}/magetab
@@ -371,7 +373,8 @@ rule run_bioentities_JSONL_creation:
     container: "docker://quay.io/ebigxa/atlas-index-base:1.3"
     log: "create_bioentities_jsonl.log"
     input:
-        staged_files=rules.stage_files_for_species.output.staged_files
+        staged_files=rules.stage_files_for_species.output.staged_files,
+        dirs_prepared=rules.prepare_directories_and_links.output.dirs_prepared
     params:
         bioentities="./",
         output_dir=config['output_dir'],
