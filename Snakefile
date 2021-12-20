@@ -132,7 +132,8 @@ def get_mem_mb(wildcards, attempt):
     mem_avail = [ 2, 2, 4, 8, 16, 64, 128, 256 ]
     return mem_avail[attempt-1] * 1000
 
-def get_mem_mb_coexp(wildcards, attempt):
+# get_mem_mb_coexp
+def get_himem_mb(wildcards, attempt):
     """
     To adjust resources in the rules
     attemps = reiterations + 1
@@ -319,7 +320,7 @@ rule update_coexpressions:
     container: "docker://quay.io/ebigxa/atlas-index-base:1.2"
     log: "update_coexpressions/{chunk}/update_coexpressions.log"
     resources:
-        mem_mb=get_mem_mb_coexp
+        mem_mb=get_himem_mb
     params:
         bioentities="./",
         output_dir="update_coexpressions/{chunk}",
@@ -484,7 +485,7 @@ rule analytics_bioentities_mapping:
     output:
         mappings_file="analytics_bioentities_mapping/{chunk}/"+f"{config['species']}.map.bin"
     resources:
-        mem_mb=get_mem_mb
+        mem_mb=get_himem_mb
     shell:
         """
         prefix={params.output_dir}
@@ -520,7 +521,7 @@ rule create_analytics_jsonl_files:
         accessions="accessions_{chunk}",
         mappings_file="analytics_bioentities_mapping/{chunk}/"+f"{config['species']}.map.bin"
     resources:
-        mem_mb=get_mem_mb
+        mem_mb=get_himem_mb
     params:
         bioentities="./",
         output_dir="analytics_jsonl_files/{chunk}",
