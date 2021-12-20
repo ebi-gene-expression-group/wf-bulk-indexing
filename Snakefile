@@ -325,7 +325,10 @@ rule update_coexpressions:
         bioentities="./",
         output_dir="update_coexpressions/{chunk}",
         atlas_env_file=config['atlas_env_file'],
-        experiment_files="experiment_files"
+        experiment_files="experiment_files",
+        atlas_exps=config['atlas_exps'],
+        web_app_context=config['web_app_context'],
+        exp_design_path=config['atlas_exp_design']
     input:
         baseline_accessions="baseline_accessions_{chunk}",
         dirs_prepared=rules.prepare_directories_and_links.output.dirs_prepared
@@ -350,7 +353,20 @@ rule update_coexpressions:
 
         {get_missing_accessions}
 
-        {workflow.basedir}/index-gxa/bin/update_coexpressions_cli.sh
+         # only run if we have accessions to run (>0)
+        if [ $(wc -l $input_accessions | awk '{{ print $1 }}') -gt 0 ]; then
+            export ACCESSIONS=$(cat $input_accessions | tr '\\n' ',' | sed 's/,$//' )
+            set +e
+            {workflow.basedir}/index-gxa/bin/update_coexpressions_cli.sh
+            status=$?
+            touch $failed_accessions_output # in case there was no failure.
+            # accessions done now, input accessions that are not in failed -- append to all done accessions
+            comm -23 <( sort -u $input_accessions ) <( sort -u $failed_accessions_output ) >> $done_accessions
+            set -e
+            exit $status
+        else
+            echo "No more accessions to be done on this retry."
+        fi
         """
 
 
