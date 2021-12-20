@@ -317,7 +317,7 @@ rule update_experiment_designs:
         """
 
 rule update_coexpressions:
-    container: "docker://quay.io/ebigxa/atlas-index-base:1.2"
+    container: "docker://quay.io/ebigxa/atlas-index-base:1.3"
     log: "update_coexpressions/{chunk}/update_coexpressions.log"
     resources:
         mem_mb=get_himem_mb
@@ -407,7 +407,7 @@ rule run_bioentities_JSONL_creation:
 
 rule delete_species_bioentities_index:
     container:
-        "docker://quay.io/ebigxa/atlas-index-base:1.0"
+        "docker://quay.io/ebigxa/atlas-index-base:1.3"
     log: "delete_species_bioentities_index.log"
     params:
         atlas_env_file=config['atlas_env_file'],
@@ -430,7 +430,7 @@ rule delete_species_bioentities_index:
 
 rule load_species_into_bioentities_index:
     container:
-        "docker://quay.io/ebigxa/atlas-index-base:1.0"
+        "docker://quay.io/ebigxa/atlas-index-base:1.3"
     log: "load_species_into_bioentities_index.log"
     params:
         bioentities="./",
