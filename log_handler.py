@@ -13,7 +13,6 @@ error_list=[]
 job_error_list=[]
 msg_error_list=[]
 chunks=[]
-# logging of errors in the workflow
 
 def log_handler(msg):
     #for k, v in msg.items():
