@@ -3,6 +3,13 @@ import logging
 import os
 import re
 
+import pandas as pd
+# print full data frame
+pd.set_option('display.max_rows', None)
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', None)
+pd.set_option('display.max_colwidth', -1)
+
 l = logging.getLogger(__name__)
 l.setLevel(logging.DEBUG)
 fh = logging.FileHandler(os.environ.get('LOG_PATH'), mode='w')
@@ -13,13 +20,18 @@ error_list=[]
 job_error_list=[]
 msg_error_list=[]
 chunks=[]
+n=0
+# logging of errors in the workflow
 
 def log_handler(msg):
     #for k, v in msg.items():
     #    l.info(f"Key: {k}")
     #    l.info(f"Value: {v}")
 
-    #l.info(f"new msg")
+    global n    # counter for errors in rules
+    global df   # data frame with error summary
+    # l.info(f"new msg")
+    # ======================== RUNTIME LOG =========================
     if "level" in msg:
         if msg['level'] == 'error':
             l.info(f"---error found")
@@ -31,7 +43,7 @@ def log_handler(msg):
     if 'wildcards' in msg:
         if msg['wildcards']:
             chunks.append(msg['wildcards']['chunk'])
-            l.info(f"---Wildcards found in msg:\t{chunks}")
+            l.info(f"---Wildcards found in log msg:\t{chunks}")
 
 
     if 'msg' in msg:
@@ -40,11 +52,44 @@ def log_handler(msg):
             if re.search("Error executing rule", A, re.IGNORECASE) :
                 l.info(f"---\t{A}")
                 msg_error_list.append(A)
-            # end of the workflow:
+                # from A, create and fill array with Rule, Chunk, Error_occurrence, Error_out
+                n+=1
+                rule=re.split(r'on cluster',re.split(r'Error executing',A)[1])[0]
+                if re.search("chunk", A, re.IGNORECASE) :
+                    # for rules than split in chunks
+                    chunk=re.split(r'/',re.split(r'chunk=',A)[1])[0]
+                else:
+                    # for unique rules
+                    chunk='unique'
+                error_occurrence=1
+                error_out=re.split(r',',re.split(r' ',A)[10])[0]
+     
+                if n==1:
+                    df=pd.DataFrame([[rule,chunk,error_occurrence,error_out]], columns=['Rule', 'Chunk', 'Error_occurrence', 'Error_out'])
+                    l.info(f"{df} ")
+                else:
+                    i=df[(df['Rule']==rule) & (df['Chunk'] == chunk)].index
+                    l.info(f"{i} ") 
+                    if len(i)==1:
+                        # update row
+                        df['Error_occurrence'][i]+=1
+                        df['Error_out'][i]=error_out
+                    else:
+                        # add new row
+                        temp_df=pd.DataFrame([[rule,chunk,error_occurrence,error_out]], columns=['Rule', 'Chunk', 'Error_occurence', 'Error_out'])
+                        df=pd.concat( [df,temp_df], ignore_index=True )
+                        del temp_df
+                    l.info(f"{df} ")
+                del rule
+                del chunk
+                del error_occurrence
+                del error_out
+            # end of the workflow.
+            # ======================== LOG SUMMARY =========================
             elif re.search("removed all locks", A, re.IGNORECASE) :
 
                 l.info(f"---------------------")
-                l.info(f"Log handler- Summary:")
+                l.info(f"Log handler - Summary:")
                 l.info(f"{error_list}" )
                 l.info(f"{job_error_list}" )
                 l.info(f"{msg_error_list}" )
@@ -70,4 +115,5 @@ def log_handler(msg):
                                     file_contents = f.read()
                                     l.info(f"\t{file_contents}")
                                     f.close()
-
+                l.info(f"If Error_occurrence is == RESTART_TIMES+1 then error should be investigated")
+                l.info(f"{df}" )
