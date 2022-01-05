@@ -15,6 +15,8 @@ l.setLevel(logging.DEBUG)
 fh = logging.FileHandler(os.environ.get('LOG_PATH'), mode='w')
 l.addHandler(fh)
 
+reit_number=os.environ.get('RESTART_TIMES')
+
 #jobs = {}
 error_list=[]
 job_error_list=[]
@@ -31,19 +33,20 @@ def log_handler(msg):
     global n    # counter for errors in rules
     global df   # data frame with error summary
     # l.info(f"new msg")
+
     # ======================== RUNTIME LOG =========================
     if "level" in msg:
         if msg['level'] == 'error':
-            l.info(f"---error found")
+            #l.info(f"---error found")
             error_list.append(msg['level'])
         if msg['level'] == 'job_error':
-            l.info(f"---job_error found")
+            #l.info(f"---job_error found")
             job_error_list.append(msg['level'])
 
     if 'wildcards' in msg:
         if msg['wildcards']:
             chunks.append(msg['wildcards']['chunk'])
-            l.info(f"---Wildcards found in log msg:\t{chunks}")
+            #l.info(f"---Wildcards found in log msg:\t{chunks}")
 
 
     if 'msg' in msg:
@@ -72,11 +75,11 @@ def log_handler(msg):
                     l.info(f"{i} ") 
                     if len(i)==1:
                         # update row
-                        df['Error_occurrence'][i]+=1
-                        df['Error_out'][i]=error_out
+                        df['Error_occurrence'].iloc[i]+=1
+                        df['Error_out'].iloc[i]=error_out
                     else:
                         # add new row
-                        temp_df=pd.DataFrame([[rule,chunk,error_occurrence,error_out]], columns=['Rule', 'Chunk', 'Error_occurence', 'Error_out'])
+                        temp_df=pd.DataFrame([[rule,chunk,error_occurrence,error_out]], columns=['Rule', 'Chunk', 'Error_occurrence', 'Error_out'])
                         df=pd.concat( [df,temp_df], ignore_index=True )
                         del temp_df
                     l.info(f"{df} ")
@@ -117,3 +120,5 @@ def log_handler(msg):
                                     f.close()
                 l.info(f"If Error_occurrence is == RESTART_TIMES+1 then error should be investigated")
                 l.info(f"{df}" )
+                l.info(f"The filtered data frame is:" )
+                l.info(f"{df.loc[df['Error_occurrence'] >= reit_number + 1 ]}")
