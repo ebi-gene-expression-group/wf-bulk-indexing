@@ -123,7 +123,7 @@ def log_handler(msg):
                     l.info(f"RESTART_TIMES={reit_number}" )
                     l.info(f"The data frame is:" )
                     l.info(f"{df}" )
-                    if int(df.loc[df['Error_occurrence'] >= reit_number + 1 ].shape[0]) > 0:
+                    if len(df.loc[df['Error_occurrence'] >= reit_number + 1 ].index) > 0:
                         l.info(f"The filtered data frame is:" )
                         l.info(f"{df.loc[df['Error_occurrence'] >= reit_number + 1 ]}")
                     else:
