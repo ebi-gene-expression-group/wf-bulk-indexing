@@ -93,9 +93,9 @@ def log_handler(msg):
 
                 l.info(f"---------------------")
                 l.info(f"Log handler - Summary:")
-                l.info(f"{error_list}" )
-                l.info(f"{job_error_list}" )
-                l.info(f"{msg_error_list}" )
+                #l.info(f"{error_list}" )
+                #l.info(f"{job_error_list}" )
+                #l.info(f"{msg_error_list}" )
 
                 l.info(f"length of error_list = {len(error_list)}" )
                 l.info(f"length of job_error_list = {len(job_error_list)}" )
