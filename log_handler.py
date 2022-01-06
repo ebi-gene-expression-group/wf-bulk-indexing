@@ -15,7 +15,7 @@ l.setLevel(logging.DEBUG)
 fh = logging.FileHandler(os.environ.get('LOG_PATH'), mode='w')
 l.addHandler(fh)
 
-reit_number=os.environ.get('RESTART_TIMES')
+reit_number=int(os.environ.get('RESTART_TIMES'))
 
 #jobs = {}
 error_list=[]
