@@ -118,7 +118,16 @@ def log_handler(msg):
                                     file_contents = f.read()
                                     l.info(f"\t{file_contents}")
                                     f.close()
-                l.info(f"If Error_occurrence is == RESTART_TIMES+1 then error should be investigated")
-                l.info(f"{df}" )
-                l.info(f"The filtered data frame is:" )
-                l.info(f"{df.loc[df['Error_occurrence'] >= reit_number + 1 ]}")
+                if 'df' in globals():
+                    l.info(f"There have been error/s. If Error_occurrence is == RESTART_TIMES+1 then error should be investigated")
+                    l.info(f"RESTART_TIMES={reit_number}" )
+                    l.info(f"The data frame is:" )
+                    l.info(f"{df}" )
+                    if df.loc[df['Error_occurrence'] >= reit_number + 1 ].shape[0]>0:
+                        l.info(f"The filtered data frame is:" )
+                        l.info(f"{df.loc[df['Error_occurrence'] >= reit_number + 1 ]}")
+                    else:
+                        l.info(f"Completed. No errors after filtering." ) 
+                else:
+                    l.info(f"Completed. No errors." )
+
