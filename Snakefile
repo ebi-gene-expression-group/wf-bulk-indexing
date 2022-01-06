@@ -138,8 +138,10 @@ def get_himem_mb(wildcards, attempt):
     To adjust resources in the rules
     attemps = reiterations + 1
     Max number attemps = 8
+    Beyond 300 GBs it needs a different queue on our setup, but snakemake
+    currently only supports using a single queue.
     """
-    mem_avail = [ 8, 8, 16, 32, 64, 128, 256, 512 ]
+    mem_avail = [ 8, 8, 16, 32, 64, 128, 256, 290 ]
     return mem_avail[attempt-1] * 1000
 
 
