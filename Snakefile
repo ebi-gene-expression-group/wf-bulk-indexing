@@ -309,8 +309,13 @@ rule update_experiment_designs:
             {workflow.basedir}/index-gxa/bin/update_experiment_designs_cli.sh
             status=$?
             touch $failed_accessions_output # in case there was no failure.
-            # accessions done now, input accessions that are not in failed -- append to all done accessions
-            comm -23 <( sort -u $input_accessions ) <( sort -u $failed_accessions_output ) >> $done_accessions
+            # check if the process failed but the failed file is empty
+            # if this is the case, the process failed before starting and we
+            # shouldn't update the done accessions
+            if ( [[ -s $failed_accessions_output ]] && ((status != 0)) ) || (( status == 0 )); then
+                # accessions done now, input accessions that are not in failed -- append to all done accessions
+                comm -23 <( sort -u $input_accessions ) <( sort -u $failed_accessions_output ) >> $done_accessions
+            fi
             set -e
             exit $status
         else
@@ -362,8 +367,13 @@ rule update_coexpressions:
             {workflow.basedir}/index-gxa/bin/update_coexpressions_cli.sh
             status=$?
             touch $failed_accessions_output # in case there was no failure.
-            # accessions done now, input accessions that are not in failed -- append to all done accessions
-            comm -23 <( sort -u $input_accessions ) <( sort -u $failed_accessions_output ) >> $done_accessions
+            # check if the process failed but the failed file is empty
+            # if this is the case, the process failed before starting and we
+            # shouldn't update the done accessions
+            if ( [[ -s $failed_accessions_output ]] && ((status != 0)) ) || (( status == 0 )); then
+                # accessions done now, input accessions that are not in failed -- append to all done accessions
+                comm -23 <( sort -u $input_accessions ) <( sort -u $failed_accessions_output ) >> $done_accessions
+            fi
             set -e
             exit $status
         else
@@ -580,8 +590,13 @@ rule create_analytics_jsonl_files:
             {workflow.basedir}/index-gxa/bin/generate_analytics_JSONL_files.sh
             status=$?
             touch $failed_accessions_output # in case there was no failure.
-            # accessions done now, input accessions that are not in failed -- append to all done accessions
-            comm -23 <( sort -u $input_accessions ) <( sort -u $failed_accessions_output ) >> $done_accessions
+            # check if the process failed but the failed file is empty
+            # if this is the case, the process failed before starting and we
+            # shouldn't update the done accessions
+            if ( [[ -s $failed_accessions_output ]] && ((status != 0)) ) || (( status == 0 )); then
+                # accessions done now, input accessions that are not in failed -- append to all done accessions
+                comm -23 <( sort -u $input_accessions ) <( sort -u $failed_accessions_output ) >> $done_accessions
+            fi
             set -e
             exit $status
         else
@@ -637,9 +652,13 @@ rule load_bulk_analytics_index:
             {workflow.basedir}/index-gxa/bin/load_analytics_files_in_Solr.sh
             status=$?
             touch $failed_accessions_output # in case there was no failure.
-            # accessions done now, input accessions that are not in failed -- append to all done accessions
-            comm -23 <( sort -u $input_accessions ) <( sort -u $failed_accessions_output ) >> $done_accessions
-            {workflow.basedir}/index-gxa/bin/gxa-index-set-no-autocreate.sh
+            # check if the process failed but the failed file is empty
+            # if this is the case, the process failed before starting and we
+            # shouldn't update the done accessions
+            if ( [[ -s $failed_accessions_output ]] && ((status != 0)) ) || (( status == 0 )); then
+                # accessions done now, input accessions that are not in failed -- append to all done accessions
+                comm -23 <( sort -u $input_accessions ) <( sort -u $failed_accessions_output ) >> $done_accessions
+            fi
             set -e
             exit $status
         else
