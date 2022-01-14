@@ -144,6 +144,9 @@ def get_himem_mb(wildcards, attempt):
     mem_avail = [ 8, 8, 16, 32, 64, 128, 256, 290 ]
     return mem_avail[attempt-1] * 1000
 
+def get_coexp_mem_mb(wildcards, attempt):
+    mem_avail = [8, 32, 64, 128, 160, 192, 208, 240]
+
 
 def aggregate_accessions_update_experiment(wildcards):
     checkpoint_output = checkpoints.divide_accessions_into_chunks.get(**wildcards).output[0]
@@ -328,7 +331,7 @@ rule update_coexpressions:
     container: "docker://quay.io/ebigxa/atlas-index-base:1.3"
     log: "update_coexpressions/{chunk}/update_coexpressions.log"
     resources:
-        mem_mb=get_himem_mb
+        mem_mb=get_coexp_mem_mb
     params:
         bioentities="./",
         output_dir="update_coexpressions/{chunk}",
