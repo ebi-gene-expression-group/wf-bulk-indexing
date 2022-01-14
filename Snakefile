@@ -185,7 +185,8 @@ rule get_accessions_for_species:
 checkpoint divide_accessions_into_chunks:
     log: "divide_accessions_into_chunks.log"
     params:
-        lines_per_split=50
+        lines_per_split=50,
+        lines_per_split_baseline=5
     input:
         accessions=rules.get_accessions_for_species.output.accessions,
         baseline_accessions=rules.get_accessions_for_species.output.baseline_accessions
@@ -195,7 +196,7 @@ checkpoint divide_accessions_into_chunks:
         """
         # This will generate accessions_01, accessions_02, etc and the same for baseline_accessions_
         split -l {params.lines_per_split} -d {input.accessions} accessions_
-        split -l {params.lines_per_split} -d {input.baseline_accessions} baseline_accessions_
+        split -l {params.lines_per_split_baseline} -d {input.baseline_accessions} baseline_accessions_
         """
 
 rule stage_files_for_species:
