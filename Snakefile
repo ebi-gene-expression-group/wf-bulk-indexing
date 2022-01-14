@@ -146,6 +146,7 @@ def get_himem_mb(wildcards, attempt):
 
 def get_coexp_mem_mb(wildcards, attempt):
     mem_avail = [8, 32, 64, 128, 160, 192, 208, 240]
+    return mem_avail[attempt-1] * 1000
 
 
 def aggregate_accessions_update_experiment(wildcards):
