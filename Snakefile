@@ -674,6 +674,8 @@ rule load_bulk_analytics_index:
 rule aggregate_load_bulk_analytics_index:
     input: aggregate_accessions_load_bulk_analytics_index
     output: "load_bulk_analytics_index.done"
+    resources:
+        mem_mb=3000
     shell:
         """
         touch {output}
