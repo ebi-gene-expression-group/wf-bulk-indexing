@@ -182,7 +182,7 @@ rule get_accessions_for_species:
 
         psql -c "COPY (SELECT accession FROM experiment WHERE species = '{params.species}') TO STDOUT WITH NULL AS ''" \
              -v ON_ERROR_STOP=1 $dbConnection > {output.accessions}
-        psql -c "COPY (SELECT accession FROM experiment WHERE species = '{params.species}' AND type = 'RNASEQ_MRNA_BASELINE' ) TO STDOUT WITH NULL AS ''" \
+        psql -c "COPY (SELECT accession FROM experiment WHERE species = '{params.species}' AND type LIKE '%BASELINE%' ) TO STDOUT WITH NULL AS ''" \
              -v ON_ERROR_STOP=1 $dbConnection > {output.baseline_accessions}
         """
 
