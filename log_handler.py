@@ -10,6 +10,21 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', -1)
 
+def format_percentage(done, total):
+    """Format percentage from given fraction while avoiding superflous precision."""
+    if done == total:
+        return "100%"
+    if done == 0:
+        return "0%"
+    precision = 0
+    fraction = done / total
+    fmt_precision = "{{:.{}%}}".format
+    fmt = lambda fraction: fmt_precision(precision).format(fraction)
+    while fmt(fraction) == "100%" or fmt(fraction) == "0%":
+        precision += 1
+    return fmt(fraction)
+
+
 l = logging.getLogger(__name__)
 l.setLevel(logging.DEBUG)
 fh = logging.FileHandler(os.environ.get('LOG_PATH'), mode='w')
@@ -42,6 +57,14 @@ def log_handler(msg):
         if msg['level'] == 'job_error':
             #l.info(f"---job_error found")
             job_error_list.append(msg['level'])
+        if msg['level'] == 'progress':
+            done = msg["done"]
+            total = msg["total"]
+            l.info(
+                "{} of {} steps ({}) done".format(
+                        done, total, format_percentage(done, total)
+                    )
+                )
 
     if 'wildcards' in msg:
         if msg['wildcards']:
@@ -53,7 +76,8 @@ def log_handler(msg):
         A=msg['msg']
         if A != None and isinstance(A, str):
             if re.search("Error executing rule", A, re.IGNORECASE) :
-                l.info(f"---\t{A}")
+                # lets not print all these on runtime and just print a final summary
+                #l.info(f"---\t{A}")
                 msg_error_list.append(A)
                 # from A, create and fill array with Rule, Chunk, Error_occurrence, Error_out
                 n+=1
@@ -66,13 +90,13 @@ def log_handler(msg):
                     chunk='unique'
                 error_occurrence=1
                 error_out=re.split(r',',re.split(r' ',A)[10])[0]
-     
+
                 if n==1:
                     df=pd.DataFrame([[rule,chunk,error_occurrence,error_out]], columns=['Rule', 'Chunk', 'Error_occurrence', 'Error_out'])
-                    l.info(f"{df} ")
+                    #l.info(f"{df} ")
                 else:
                     i=df[(df['Rule']==rule) & (df['Chunk'] == chunk)].index
-                    l.info(f"{i} ") 
+                    #l.info(f"{i} ")
                     if len(i)==1:
                         # update row
                         df['Error_occurrence'].iloc[i]+=1
@@ -82,7 +106,7 @@ def log_handler(msg):
                         temp_df=pd.DataFrame([[rule,chunk,error_occurrence,error_out]], columns=['Rule', 'Chunk', 'Error_occurrence', 'Error_out'])
                         df=pd.concat( [df,temp_df], ignore_index=True )
                         del temp_df
-                    l.info(f"{df} ")
+                    #l.info(f"{df} ")
                 del rule
                 del chunk
                 del error_occurrence
@@ -127,7 +151,6 @@ def log_handler(msg):
                         l.info(f"The filtered data frame is:" )
                         l.info(f"{df.loc[df['Error_occurrence'] >= reit_number + 1 ]}")
                     else:
-                        l.info(f"Completed. No errors after filtering." ) 
+                        l.info(f"Completed. No errors after filtering." )
                 else:
                     l.info(f"Completed. No errors." )
-
