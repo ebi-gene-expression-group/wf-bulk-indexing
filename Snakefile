@@ -508,6 +508,7 @@ rule analytics_bioentities_mapping:
         # This could optionally be either that file or a file given with specific accessions to redo.
         # or maybe the accessions broken in chunks.
         accessions="accessions_{chunk}",
+        exp_design="update_experiment_designs/{chunk}/exp_designs_updates.txt",
         index_loaded=rules.load_species_into_bioentities_index.output.loaded
     params:
         bioentities="./",
