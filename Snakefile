@@ -535,6 +535,9 @@ rule analytics_bioentities_mapping:
         export SPECIES={params.species}
         export server_port=8081 #fake
 
+        # needed to trigger an error code exit for mappings
+        export failed_accessions_output=$prefix"/failed_accessions.txt"
+
         input_accessions={input.accessions}
 
         {micromamba_env}
