@@ -164,6 +164,8 @@ def aggregate_accessions_load_bulk_analytics_index(wildcards):
     return expand("load_bulk_analytics_index/{chunk}/analytics_index_loaded.txt",
         chunk=glob_wildcards("accessions_{chunk}").chunk)
 
+localrules: aggregate_update_experiment, aggregate_update_coexpression, aggregate_load_bulk_analytics_index
+
 
 rule get_accessions_for_species:
     log: "get_accessions_for_species.log"
@@ -678,8 +680,6 @@ rule load_bulk_analytics_index:
 rule aggregate_load_bulk_analytics_index:
     input: aggregate_accessions_load_bulk_analytics_index
     output: "load_bulk_analytics_index.done"
-    resources:
-        mem_mb=3000
     shell:
         """
         touch {output}
