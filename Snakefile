@@ -221,14 +221,14 @@ rule stage_files_for_species:
             Path(dest).mkdir(parents=True, exist_ok=True)
             if dest.endswith("go") or dest.endswith("interpro"):
                 call = f"rsync {rsync_options} --include=*.tsv  --exclude=* {dir}/* {dest}"
-            elif not glob.glob(f"{dir}/{params.species}*.tsv") and not glob.glob(f"{dir}/*/{params.species}*.tsv"):
+            elif not glob.glob(f"{dir}/{params.species}*.tsv") and not glob.glob(f"{dir}/*/{params.species}.*.tsv"):
                 print(f"Skipping {dir} for {params.species}")
                 continue
             elif dest.endswith('annotations') or dest.endswith('array_designs'):
                 # some directories which are not "go" will not have anything for our species
-                call = f"rsync {rsync_options} {dir}/**/{params.species}*.tsv {dest}"
+                call = f"rsync {rsync_options} {dir}/**/{params.species}.*.tsv {dest}"
             elif dest.endswith('reactome') or dest.endswith('mirbase'):
-                call = f"rsync {rsync_options} {dir}/{params.species}*.tsv {dest}"
+                call = f"rsync {rsync_options} {dir}/{params.species}.*.tsv {dest}"
 
 
             print(f"Calling {call}")
