@@ -76,9 +76,9 @@ def get_all_staging_files():
         if dest.endswith("go") or dest.endswith('interpro'):
             files = [os.path.basename(f) for f in glob.glob(f"{sdir}/*.tsv")]
         else:
-            files = [os.path.basename(f) for f in glob.glob(f"{sdir}/{species}*.tsv")]
+            files = [os.path.basename(f) for f in glob.glob(f"{sdir}/{species}.*.tsv")]
             # We have cases where the files are buried one directory below :-(
-            files.extend([os.path.basename(f) for f in glob.glob(f"{sdir}/*/{species}*.tsv")])
+            files.extend([os.path.basename(f) for f in glob.glob(f"{sdir}/*/{species}.*.tsv")])
         results.extend([f"{dest}/{f}" for f in files])
 
     staging_files.update(results)
@@ -221,7 +221,7 @@ rule stage_files_for_species:
             Path(dest).mkdir(parents=True, exist_ok=True)
             if dest.endswith("go") or dest.endswith("interpro"):
                 call = f"rsync {rsync_options} --include=*.tsv  --exclude=* {dir}/* {dest}"
-            elif not glob.glob(f"{dir}/{params.species}*.tsv") and not glob.glob(f"{dir}/*/{params.species}.*.tsv"):
+            elif not glob.glob(f"{dir}/{params.species}.*.tsv") and not glob.glob(f"{dir}/*/{params.species}.*.tsv"):
                 print(f"Skipping {dir} for {params.species}")
                 continue
             elif dest.endswith('annotations') or dest.endswith('array_designs'):
