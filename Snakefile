@@ -164,7 +164,7 @@ def aggregate_accessions_update_experiment(wildcards):
 
 def aggregate_accessions_sync_experiment_designs(wildcards):
     checkpoint_output = checkpoints.divide_accessions_into_chunks.get(**wildcards).output[0]
-    return expand("update_experiment_designs/{chunk}/exp_design_synced.txt",
+    return expand("update_experiment_designs/{chunk}/sync_experiment_designs.done",
         chunk=glob_wildcards("accessions_{chunk}").chunk)
 
 def aggregate_baseline_accessions_update_coexpression(wildcards):
@@ -355,7 +355,7 @@ rule sync_experiment_designs:
         destination=get_exp_design_sync_destination(),
         exp_design_prefix="experiment_files/expdesign"
     output:
-        done=touch("update_experiment_designs/{chunk}/sync_experiment_designs.txt")
+        done=touch("update_experiment_designs/{chunk}/sync_experiment_designs.done")
     shell:
         """
         set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
