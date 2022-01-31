@@ -18,15 +18,15 @@ include: "Snakefile"
 
 def get_outputs_bioentities(wildcards):
     if config['target'] == "load":
-        return [f"{config['species']}.index.loaded",
+        outputs = [f"{config['species']}.index.loaded",
                 "exp_designs_updates.done",
                 "coexpression_updates.done",
                 "load_bulk_analytics_index.done"]
+        if 'exp_update_sync_dest' in config:
+            outputs.append("sync_exp_designs.done")
     elif config['target'] == "jsonl":
         return get_jsonl_paths()
 
 rule all:
     input:
         required_outputs=get_outputs_bioentities
-
-

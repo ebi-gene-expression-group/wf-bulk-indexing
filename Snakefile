@@ -148,10 +148,23 @@ def get_coexp_mem_mb(wildcards, attempt):
     mem_avail = [8, 32, 64, 128, 160, 192, 208, 240]
     return mem_avail[attempt-1] * 1000
 
+def get_sync_cpus(wildcards):
+    return 4
+
+def get_exp_design_sync_destination():
+    # The destination for a sync as expected by rsync: user@host:<path>
+    if 'exp_update_sync_dest' in config:
+        return config['exp_update_sync_dest']
+
 
 def aggregate_accessions_update_experiment(wildcards):
     checkpoint_output = checkpoints.divide_accessions_into_chunks.get(**wildcards).output[0]
     return expand("update_experiment_designs/{chunk}/exp_designs_updates.txt",
+        chunk=glob_wildcards("accessions_{chunk}").chunk)
+
+def aggregate_accessions_sync_experiment_designs(wildcards):
+    checkpoint_output = checkpoints.divide_accessions_into_chunks.get(**wildcards).output[0]
+    return expand("update_experiment_designs/{chunk}/exp_design_synced.txt",
         chunk=glob_wildcards("accessions_{chunk}").chunk)
 
 def aggregate_baseline_accessions_update_coexpression(wildcards):
@@ -330,6 +343,27 @@ rule update_experiment_designs:
         fi
         """
 
+
+rule sync_experiment_designs:
+    log: "update_experiment_designs/{chunk}/sync_experiment_designs.log"
+    resources:
+        cpu=get_sync_cpus
+    input:
+        source_accs="accessions_{chunk}",
+        update_exp_designs_done="update_experiment_designs/{chunk}/exp_designs_updates.txt"
+    params:
+        destination=get_sync_destination(),
+        exp_design_prefix="experiment_files/expdesign"
+    output:
+        done=touch("update_experiment_designs/{chunk}/sync_experiment_designs.txt")
+    shell:
+        """
+        set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
+
+        cat {input.source_accs} | parallel -j {params.cpu} --joblog {log} rsync -qlrtvz --no-owner {params.exp_design_prefix}/ExpDesign-{{}}.tsv {params.destination}/
+        """
+
+
 rule update_coexpressions:
     container: "docker://quay.io/ebigxa/atlas-index-base:1.5"
     log: "update_coexpressions/{chunk}/update_coexpressions.log"
@@ -392,6 +426,14 @@ rule update_coexpressions:
 rule aggregate_update_experiment:
     input: aggregate_accessions_update_experiment
     output: "exp_designs_updates.done"
+    shell:
+        """
+        touch {output}
+        """
+
+rule aggregate_sync_experiment_designs:
+    input: aggregate_accessions_sync_experiment_designs
+    output: "sync_exp_designs.done"
     shell:
         """
         touch {output}
