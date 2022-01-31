@@ -352,7 +352,7 @@ rule sync_experiment_designs:
         source_accs="accessions_{chunk}",
         update_exp_designs_done="update_experiment_designs/{chunk}/exp_designs_updates.txt"
     params:
-        destination=get_sync_destination(),
+        destination=get_exp_design_sync_destination(),
         exp_design_prefix="experiment_files/expdesign"
     output:
         done=touch("update_experiment_designs/{chunk}/sync_experiment_designs.txt")
