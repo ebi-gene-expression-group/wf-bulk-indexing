@@ -346,8 +346,7 @@ rule update_experiment_designs:
 
 rule sync_experiment_designs:
     log: "update_experiment_designs/{chunk}/sync_experiment_designs.log"
-    resources:
-        cpu=get_sync_cpus
+    threads: get_sync_cpus
     input:
         source_accs="accessions_{chunk}",
         update_exp_designs_done="update_experiment_designs/{chunk}/exp_designs_updates.txt"
@@ -360,7 +359,7 @@ rule sync_experiment_designs:
         """
         set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
 
-        cat {input.source_accs} | parallel -j {params.cpu} --joblog {log} rsync -qlrtvz --no-owner {params.exp_design_prefix}/ExpDesign-{{}}.tsv {params.destination}/
+        cat {input.source_accs} | parallel -j {threads} --joblog {log} rsync -qlrtvz --no-owner {params.exp_design_prefix}/ExpDesign-{{}}.tsv {params.destination}/
         """
 
 
