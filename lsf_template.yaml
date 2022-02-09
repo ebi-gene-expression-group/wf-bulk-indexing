@@ -6,3 +6,16 @@ load_species_into_bioentities_index:
 
 get_accessions_for_species:
   - "-g <group-for-db>"
+
+update_coexpressions:
+  - "-g <group-for-db>"
+
+analytics_bioentities_mapping:
+  - "-g <group-for-db>"
+
+create_analytics_jsonl_files:
+  - "-g <group-for-db>"
+
+load_bulk_analytics_index:
+  - "-g <group-for-solr>"
+  - "-g <group-for-db>"
