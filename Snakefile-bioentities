@@ -25,6 +25,8 @@ def get_outputs_bioentities(wildcards):
         if 'exp_update_sync_dest' in config:
             outputs.append("sync_exp_designs.done")
         return outputs
+    elif config['target'] == "load_bioentities_only":
+        outputs = [f"{config['species']}.index.loaded"]
     elif config['target'] == "jsonl":
         return get_jsonl_paths()
 
