@@ -28,6 +28,7 @@ def get_outputs_bioentities(wildcards):
         return outputs
     elif config['target'] == "load_bioentities_only":
         outputs = [f"{config['species']}.index.loaded"]
+        return outputs
     elif config['target'] == "jsonl":
         return get_jsonl_paths()
 
