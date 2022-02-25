@@ -27,8 +27,9 @@ def format_percentage(done, total):
 
 l = logging.getLogger(__name__)
 l.setLevel(logging.DEBUG)
-fh = logging.FileHandler(os.environ.get('LOG_PATH'), mode='w')
-l.addHandler(fh)
+if os.environ.get('LOG_PATH'):
+    fh = logging.FileHandler(os.environ.get('LOG_PATH'), mode='w')
+    l.addHandler(fh)
 
 reit_number=int(os.environ.get('RESTART_TIMES'))
 
