@@ -586,6 +586,7 @@ rule analytics_bioentities_mapping:
         {micromamba_env}
 
         # we don't break this into done and failed as we need a single mapping file per chunk
+        # Note that part of the data from the mapping comes from the Solr server, so as an input the fact that bioentites as been loaded is needed.
 
         export ACCESSIONS=$(cat $input_accessions | tr '\\n' ',' | sed 's/,$//' )
         {workflow.basedir}/index-bioentities/bin/create_bioentities_property_map.sh
