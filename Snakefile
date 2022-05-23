@@ -6,6 +6,12 @@ from pathlib import Path
 
 # atom: set grammar=python:
 
+# Note about Solr and db authentication:
+# The scripts used in this workflow expect SOLR_USER and SOLR_PASS environment variables
+# set to authenticate. This is currently expected to be set in the ATLAS_ENV_FILE sourced 
+# at every task. Since the same var names are used in the env file and on the scripts,
+# there is no need for them to be made explicit in each rule. The same happens with db auth.
+
 TYPES = ['annotations', 'array_designs', 'go', 'interpro', 'reactome', 'mirbase']
 bioentities_directories_to_stage = set()
 staging_files = set()
