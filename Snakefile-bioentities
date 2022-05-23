@@ -9,7 +9,7 @@ include: "Snakefile"
 # - ens_eg_version: E! or E! Genomes version
 # - wbsp_version: Wormbase version. Note that some species use both E! and Wormbase.
 # - output_dir: For outputs, this is where the JSONL will be left
-# - target: currently either "load" or "jsonl". The second one stops there and doesn't execute
+# - target: currently either "load", "jsonl" or "load_bioentities_only". The second one stops there and doesn't execute
 #     deletion and load (default: "load")
 # - atlas_exps: Usually the directory where the $ATLAS_EXPS experiments are.
 # - atlas_exp_design: Path to where the experiment designs file have been copied (from wwwdev)
@@ -17,6 +17,7 @@ include: "Snakefile"
 # - bioentities_source: Path to the source bioentities folder (results of E! Update live here)
 
 def get_outputs_bioentities(wildcards):
+    print(f"Using target: {config['target']}")
     if config['target'] == "load":
         outputs = [f"{config['species']}.index.loaded",
                 "exp_designs_updates.done",
@@ -24,6 +25,9 @@ def get_outputs_bioentities(wildcards):
                 "load_bulk_analytics_index.done"]
         if 'exp_update_sync_dest' in config:
             outputs.append("sync_exp_designs.done")
+        return outputs
+    elif config['target'] == "load_bioentities_only":
+        outputs = [f"{config['species']}.index.loaded"]
         return outputs
     elif config['target'] == "jsonl":
         return get_jsonl_paths()
