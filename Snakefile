@@ -706,7 +706,8 @@ rule load_bulk_analytics_index:
             export ACCESSIONS=$(cat $input_accessions | tr '\\n' ',' | sed 's/,$//' )
             export delete_existing=true
             export analytics_jsonl_dir={params.analytics_jsonl_dir}
-            {workflow.basedir}/index-gxa/bin/gxa-index-set-autocreate.sh
+            # generates id clashes
+            # {workflow.basedir}/index-gxa/bin/gxa-index-set-autocreate.sh
             set +e
             {workflow.basedir}/index-gxa/bin/load_analytics_files_in_Solr.sh
             status=$?
