@@ -27,8 +27,9 @@ def get_outputs_bioentities(wildcards):
             outputs.append("sync_exp_designs.done")
         return outputs
     elif config['target'] == "load_bioentities_only":
-        outputs = [f"{config['species']}.index.loaded"]
-        return outputs
+        return [f"{config['species']}.index.loaded"]
+    elif config['target'] == "load_analytics_only":
+        return ["load_bulk_analytics_index.done"]
     elif config['target'] == "jsonl":
         return get_jsonl_paths()
 
