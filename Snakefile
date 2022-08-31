@@ -545,7 +545,7 @@ rule run_bioentities_JSONL_creation:
 
 rule delete_species_bioentities_index:
     """
-    This step deleted the current contents of bioentities index for the specified species. We want this
+    This step deletes the current contents of bioentities index for the specified species. We want this
     for E! Update downstream loading, but not for specific accessions loading. The logic to avoid that for the
     specific accessions run is not currently implemented.
 
@@ -672,7 +672,7 @@ rule analytics_bioentities_mapping:
         {micromamba_env}
 
         # we don't break this into done and failed as we need a single mapping file per chunk
-        # Note that part of the data from the mapping comes from the Solr server, so as an input the fact that bioentites as been loaded is needed.
+        # Note that part of the data from the mapping comes from the Solr server, so as an input the fact that bioentites has been loaded is needed.
 
         export ACCESSIONS=$(cat $input_accessions | tr '\\n' ',' | sed 's/,$//' )
         {workflow.basedir}/index-bioentities/bin/create_bioentities_property_map.sh
