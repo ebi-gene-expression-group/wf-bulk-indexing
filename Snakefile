@@ -187,6 +187,21 @@ localrules: aggregate_update_experiment, aggregate_update_coexpression, aggregat
 
 
 rule get_accessions_for_species:
+    """
+    This step brings all accessions for a desired species, it leaves all the accessions (including baseline) 
+    in `species_accessions.txt` and all the baseline accessions in `species_baseline_accessions.txt`. This is
+    useful for the update setup (after doing an E! Update).
+
+    When you want to use this same pipeline for specific accessions loading you will need to:
+    
+    1.- Obtain all the accessions that need reloading
+    2.- Obtain for each accession its species (and check that those species are in bioentities)
+    3.- Group the accessions per species (each species will be a separate run).
+    4.- For each species, create the files `species_accessions.txt` and `species_baseline_accessions.txt` 
+        only with the desired accesisons.
+
+    Step 4 should ensure that this specific rule doesn't run, and that only the desired accessions are loaded.
+    """
     log: "get_accessions_for_species.log"
     params:
         species=species_for_db(config['species']),
@@ -225,6 +240,14 @@ checkpoint divide_accessions_into_chunks:
         """
 
 rule stage_files_for_species:
+    """
+    This rule brings files that are needed for the bioentities indexing of the species. These files
+    will be usually at $ATLAS_PROD/bioentities (they are the result of the E! Update process) into local
+    directories of this pipeline execution.
+    
+    This needs to happen during a general (en-masse) update (after E! Update), but not 
+    during the loading of specific experiments, as no new species are dealt with at that point.
+    """
     log: "staging.log"
     input:
         directories=get_bioentities_directories_to_stage()
@@ -261,6 +284,10 @@ rule stage_files_for_species:
 
 
 rule prepare_directories_and_links:
+    """
+    This rule does some minor reformatting of directories after the files have been copied over
+    in the stage_files_for_species rule. This again is needed everytime that we do an E! Update.
+    """
     log: "prepare_directories_and_links.log"
     input:
         staged_files=rules.stage_files_for_species.output.staged_files
@@ -292,6 +319,15 @@ rule prepare_directories_and_links:
         """
 
 rule update_experiment_designs:
+    """
+    This step updates the experiment design files that the web application tomcat process expects in
+    some local location of the machine running tomcat. These files are based on the Atlas metadata
+    SDRF files. On the tomcat server these will usually end up in /srv/gxa/data/gxa/expdesign
+
+    Happens per accession.
+
+    Later on, rule sync_experiment_designs does an rsync to the specified tomcat machine (based on config).
+    """
     container: "docker://quay.io/ebigxa/atlas-index-base:1.5"
     log: "update_experiment_designs/{chunk}/update_experiment_designs.log"
     resources:
@@ -351,6 +387,10 @@ rule update_experiment_designs:
 
 
 rule sync_experiment_designs:
+    """
+    Usually experiment designs are stored in the local disk mounted by the web application server. Consider that when setting
+    config['exp_update_sync_dest']. This step doesn't get executed if this config is not set.
+    """
     log: "update_experiment_designs/{chunk}/sync_experiment_designs.log"
     threads: get_sync_cpus
     input:
@@ -370,6 +410,11 @@ rule sync_experiment_designs:
 
 
 rule update_coexpressions:
+    """
+    Coexpressions are currently stored in the database. This process uses the web app cli to update those. No element from this process is stored in the file system.
+
+    Happens per accession.
+    """
     container: "docker://quay.io/ebigxa/atlas-index-base:1.5"
     log: "update_coexpressions/{chunk}/update_coexpressions.log"
     resources:
@@ -453,6 +498,17 @@ rule aggregate_update_coexpression:
         """
 
 rule run_bioentities_JSONL_creation:
+    """
+    This rule takes the output of the E! Update, which was copied over from $ATLAS_PROD/bioentities in
+    the staging and prepare directories rules and generates JSONL files with the content that needs to be filled
+    into the bioentities index.
+
+    This should only happen when you are running a whole species update, but shouldn't be done
+    when we are loading new experiments or reloading existing ones. The logic to avoid this run
+    for specific accession loading is not currently implemented.
+
+    TODO: avoid this to run in the per experiment loading scenario.
+    """
     container: "docker://quay.io/ebigxa/atlas-index-base:1.5"
     log: "create_bioentities_jsonl.log"
     input:
@@ -488,6 +544,13 @@ rule run_bioentities_JSONL_creation:
         """
 
 rule delete_species_bioentities_index:
+    """
+    This step deleted the current contents of bioentities index for the specified species. We want this
+    for E! Update downstream loading, but not for specific accessions loading. The logic to avoid that for the
+    specific accessions run is not currently implemented.
+
+    This won't run if the JSONLs in run_bioentities_JSONL creation rule are not created.
+    """
     container:
         "docker://quay.io/ebigxa/atlas-index-base:1.5"
     log: "delete_species_bioentities_index.log"
@@ -511,6 +574,13 @@ rule delete_species_bioentities_index:
         """
 
 rule load_species_into_bioentities_index:
+    """
+    This step loads the current contents of JSONL files into bioentities index for the specified species. We want this
+    for E! Update downstream loading, but not for specific accessions loading. The logic to avoid that for the
+    specific accessions run is not currently implemented.
+
+    This won't run if the JSONL and previous deletion don't happen.
+    """
     container:
         "docker://quay.io/ebigxa/atlas-index-base:1.5"
     log: "load_species_into_bioentities_index.log"
@@ -550,6 +620,16 @@ rule load_species_into_bioentities_index:
 ######################### analytics #########################
 
 rule analytics_bioentities_mapping:
+    """
+    This rule creates a binary file with mappings from specific accessions' genes to bioentities
+    elements (as available in $ATLAS_PROD/bioentities). As such, this step doesn't require the JSONL
+    or the data loaded into bioentities solr index, but will use the files that where staged in the 
+    rules stage_files_for_species and prepare_directories_and_links.
+
+    This mapping file is later used to fill in the analytics index, which is accession specific.
+
+    This needs to happen both in general updating loading (post E! Update) and for accession specific loading.
+    """
     log: "analytics_bioentities_mapping/{chunk}/analytics_mapping.log"
     container:
         "docker://quay.io/ebigxa/atlas-index-base:1.5"
@@ -599,6 +679,12 @@ rule analytics_bioentities_mapping:
         """
 
 rule create_analytics_jsonl_files:
+    """
+    This rule create the JSONL files, relying on the binary mapping files, for each accession to be loaded
+    later into the bulk-analytics index in Solr.
+
+    This needs to happen both in general updating loading (post E! Update) and for accession specific loading.
+    """
     log: "analytics_jsonl_files/{chunk}/analytics_jsonl_files.log"
     container:
         "docker://quay.io/ebigxa/atlas-index-base:1.5"
@@ -664,6 +750,12 @@ rule create_analytics_jsonl_files:
         """
 
 rule load_bulk_analytics_index:
+    """
+    This rule loads all the analytics JSONL, created in the rule create_analytics_jsonl_files,
+    into the bulk-analytics-index.
+
+    This needs to happen both in general updating loading (post E! Update) and for accession specific loading.
+    """
     log: "load_bulk_analytics_index/{chunk}/load_bulk_analytics_index.log"
     container:
         "docker://quay.io/ebigxa/atlas-index-base:1.5"
