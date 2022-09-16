@@ -222,6 +222,62 @@ rule get_accessions_for_species:
              -v ON_ERROR_STOP=1 $dbConnection > {output.baseline_accessions}
         """
 
+rule set_specific_accessions_directories_per_species:
+    """
+    This rule helps setup the environment for when the overall indexing pipeline needs to be called only to run for specific accessions as part of a new experiment load
+    or an update of specific experiments. This will also run in working directory that is one level above the normal run. Given a set of accessions, it will
+    retrieve their organisms and create a set of directories, one per organisms, with all files needed for those accessions to be run.
+    """
+    log: "set_specific_accessions_directories_per_species"
+    params:
+        exp_accessions_comma_sep=config['accessions'],
+        atlas_env_file=config['atlas_env_file']
+    output:
+    conda: "envs/xpath.yaml"
+    shell:
+        """
+        set -e # snakemake on the cluster doesn't stop on error when --keep-going is set
+        exec &> "{log}"
+        # for $ATLAS_EXPS:
+        source {params.atlas_env_file}
+        # for get_organism_from_condensed_sdrf
+        source {workflow.basedir}/sh/routines.sh
+
+        reloadStudies=$(echo {params.exp_accessions} | sed 's/,/ /g')
+        # obtain unique list of organisms for set of accessions
+        declare -A reloadOrganisms
+        for expAcc in $reloadStudies; do
+            species=$(get_organism_from_condensed_sdrf "$ATLAS_EXPS/$expAcc/$expAcc.condensed-sdrf.tsv")
+            reloadOrganisms[$expAcc]="$species"
+        done
+
+        # create directories for each species where the indexing workflow will run.
+        for species in $(printf "%s\n" "${reloadOrganisms[@]}" | sort -u); do
+            mkdir -p $species
+            ## create desired structure for each organism
+            # 1.- species_accessions.txt : all accessions for that species within the original list
+            
+            rm -f $species/species_accessions.txt $species/species_baseline_accessions.txt
+            for expAcc in "${!reloadOrganisms[@]}"; do
+                if [ "${reloadOrganisms[$expAcc]}" = "$species" ]; then
+                    echo $expAcc >> $species/species_accessions.txt
+                    exp_type=$(xpath -e 'configuration/@experimentType' | sed 's/ experimentType="\(.*\)"/\1/')
+            # 2.- species_baseline_accessions.txt : all baseline accessions for that species within the original list
+                    if [[ $exp_type =~ .*baseline.* ]]; then
+                        echo $expAcc >> $species/species_baseline_accessions.txt
+                    fi
+                fi
+            done
+            # 3.- touch dirs_prepared file: this avoids execution of prepare_directories and links but allows exec of update_experiment_designs
+            touch $species/dirs_prepared
+            # 4.- touch <species>.index.loaded to avoid rules run_bioentities_JSONL_creation, delete_species_bioentities_index and load_species_into_bioentities_index
+            touch $species/$species.index.loaded
+            # 5.- soft link to bioentities and experiment_files for the species in central locations, to be able to run analytics_bioentities_mapping rule
+
+            ## run indexing workflow for each species with the desired list of accessions, setting environment, etc.
+        """
+
+
 checkpoint divide_accessions_into_chunks:
     log: "divide_accessions_into_chunks.log"
     params:
