@@ -172,6 +172,7 @@ def log_handler(msg):
                         f"There have been error/s. If Error_occurrence is == RESTART_TIMES+1 then error should be investigated"
                     )
                     l.info(f"RESTART_TIMES={reit_number}")
+                    l.info(f"Updating Error_occurrence in df")
                     if len(df.loc[df["Error_occurrence"] >= reit_number + 1].index) > 0:
                         l.info(f"The filtered data frame is:")
                         l.info(f"{df.loc[df['Error_occurrence'] >= reit_number + 1 ]}")
