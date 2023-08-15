@@ -216,9 +216,9 @@ rule get_accessions_for_species:
         exec &> "{log}"
         source {params.atlas_env_file}
 
-        psql -c "COPY (SELECT accession FROM experiment WHERE species = '{params.species}') TO STDOUT WITH NULL AS ''" \
+        psql -c "COPY (SELECT accession FROM experiment WHERE species LIKE '{params.species}%' ORDER BY load_date) TO STDOUT WITH NULL AS ''" \
              -v ON_ERROR_STOP=1 $dbConnection > {output.accessions}
-        psql -c "COPY (SELECT accession FROM experiment WHERE species = '{params.species}' AND type LIKE '%BASELINE%' ) TO STDOUT WITH NULL AS ''" \
+        psql -c "COPY (SELECT accession FROM experiment WHERE species LIKE '{params.species}%' AND type LIKE '%BASELINE%' ORDER BY load_date) TO STDOUT WITH NULL AS ''" \
              -v ON_ERROR_STOP=1 $dbConnection > {output.baseline_accessions}
         """
 
