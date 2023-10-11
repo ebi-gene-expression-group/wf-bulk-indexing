@@ -261,7 +261,7 @@ rule set_specific_accessions_directories_per_species:
             for expAcc in "${!reloadOrganisms[@]}"; do
                 if [ "${reloadOrganisms[$expAcc]}" = "$species" ]; then
                     echo $expAcc >> $species/species_accessions.txt
-                    exp_type=$(xpath -e 'configuration/@experimentType' | sed 's/ experimentType="\(.*\)"/\1/')
+                    exp_type=$(xpath -e 'configuration/@experimentType' "$ATLAS_EXPS/$expAcc/$expAcc-configuration.xml" | sed 's/ experimentType="\(.*\)"/\1/')
             # 2.- species_baseline_accessions.txt : all baseline accessions for that species within the original list
                     if [[ $exp_type =~ .*baseline.* ]]; then
                         echo $expAcc >> $species/species_baseline_accessions.txt
