@@ -223,7 +223,7 @@ rule get_accessions_for_species:
         psql -c "COPY (SELECT accession FROM experiment WHERE species LIKE '{params.species}%' AND type LIKE '%BASELINE%' ORDER BY load_date) TO STDOUT WITH NULL AS ''" \
              -v ON_ERROR_STOP=1 $dbConnection > {output.baseline_accessions}
 
-        # Loop through each word in file1.txt
+        # Loop through each word in exclusion.txt
         while IFS= read -r accession || [ -n "$accession" ]; do
             # Remove the word from {output.accessions} using grep
             grep -v "\<$accession\>" {output.accessions} > temp && mv temp {output.accessions}
