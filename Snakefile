@@ -224,7 +224,7 @@ rule get_accessions_for_species:
              -v ON_ERROR_STOP=1 $dbConnection > {output.baseline_accessions}
 
         # Loop through each word in exclude.txt
-        while IFS= read -r accession || [ -n "$accession" ]; do
+        while IFS= read -r accession && [ -n "$accession" ]; do
             # Remove the word from {output.accessions} using grep
             grep -v "\<$accession\>" {output.accessions} > temp && mv temp {output.accessions}
             grep -v "\<$accession\>" {output.baseline_accessions} > temp && mv temp {output.baseline_accessions}
