@@ -203,6 +203,8 @@ rule get_accessions_for_species:
     Step 4 should ensure that this specific rule doesn't run, and that only the desired accessions are loaded.
     """
     log: "get_accessions_for_species.log"
+    input:
+        exclusion_file="exclude.txt"
     params:
         species=species_for_db(config['species']),
         atlas_env_file=config['atlas_env_file']
@@ -220,6 +222,13 @@ rule get_accessions_for_species:
              -v ON_ERROR_STOP=1 $dbConnection > {output.accessions}
         psql -c "COPY (SELECT accession FROM experiment WHERE species LIKE '{params.species}%' AND type LIKE '%BASELINE%' ORDER BY load_date) TO STDOUT WITH NULL AS ''" \
              -v ON_ERROR_STOP=1 $dbConnection > {output.baseline_accessions}
+
+        # Loop through each word in file1.txt
+        while IFS= read -r accession || [ -n "$accession" ]; do
+            # Remove the word from {output.accessions} using grep
+            grep -v "\<$accession\>" {output.accessions} > temp && mv temp {output.accessions}
+            grep -v "\<$accession\>" {output.baseline_accessions} > temp && mv temp {output.baseline_accessions}
+        done < "$exclusion_file"
         """
 
 checkpoint divide_accessions_into_chunks:
