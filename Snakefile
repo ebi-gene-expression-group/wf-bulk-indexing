@@ -223,12 +223,13 @@ rule get_accessions_for_species:
         psql -c "COPY (SELECT accession FROM experiment WHERE species LIKE '{params.species}%' AND type LIKE '%BASELINE%' ORDER BY load_date) TO STDOUT WITH NULL AS ''" \
              -v ON_ERROR_STOP=1 $dbConnection > {output.baseline_accessions}
 
+        echo {input.exclusion_file}
         # Loop through each word in exclude.txt
-        while IFS= read -r accession && [ -n "$accession" ]; do
+        #while IFS= read -r accession && [ -n "$accession" ]; do
             # Remove the word from {output.accessions} using grep
-            grep -v "$accession" {output.accessions} > temp && mv temp {output.accessions}
-            grep -v "$accession" {output.baseline_accessions} > temp && mv temp {output.baseline_accessions}
-        done < {input.exclusion_file}
+        #    grep -v "$accession" {output.accessions} > temp && mv temp {output.accessions}
+        #    grep -v "$accession" {output.baseline_accessions} > temp && mv temp {output.baseline_accessions}
+        #done < {input.exclusion_file}
         """
 
 checkpoint divide_accessions_into_chunks:
