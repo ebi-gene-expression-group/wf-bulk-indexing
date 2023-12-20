@@ -204,7 +204,7 @@ rule get_accessions_for_species:
     """
     log: "get_accessions_for_species.log"
     input:
-        exclusion_file="exclude.txt"
+        exclusion_file=config['exclude_accessions']
     params:
         species=species_for_db(config['species']),
         atlas_env_file=config['atlas_env_file']
