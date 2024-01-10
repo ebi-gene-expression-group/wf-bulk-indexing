@@ -367,6 +367,8 @@ rule update_experiment_designs:
         export output_dir={params.output_dir}
         export EXPERIMENT_FILES={params.experiment_files}
         export server_port=8081 #fake
+        export PS1="\u@\h:\w\\$ "
+
 
         input_accessions={input.accessions}
 
