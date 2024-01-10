@@ -105,8 +105,8 @@ def log_handler(msg):
                     # l.info(f"{i} ")
                     if len(i) == 1:
                         # update row
-                        df["Error_occurrence"].iloc[i] += 1
-                        df["Error_out"].iloc[i] = error_out
+                        df.loc[i, "Error_occurrence"] += 1
+                        df.loc[i, "Error_out"] = error_out
                     else:
                         # add new row
                         temp_df = pd.DataFrame(
