@@ -545,7 +545,7 @@ rule run_bioentities_JSONL_creation:
         export EXPERIMENT_FILES={params.experiment_files}
         export BIOENTITIES_JSONL_PATH={params.output_dir}
         export server_port=8081 #fake
-        export PS1=params.ps1
+        export PS1={params.ps1}
 
         {micromamba_env}
 
