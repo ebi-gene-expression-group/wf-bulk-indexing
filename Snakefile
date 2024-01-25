@@ -203,6 +203,8 @@ rule get_accessions_for_species:
     Step 4 should ensure that this specific rule doesn't run, and that only the desired accessions are loaded.
     """
     log: "get_accessions_for_species.log"
+    input:
+        exclusion_file=config['exclude_accessions']
     params:
         species=species_for_db(config['species']),
         atlas_env_file=config['atlas_env_file']
@@ -220,6 +222,14 @@ rule get_accessions_for_species:
              -v ON_ERROR_STOP=1 $dbConnection > {output.accessions}
         psql -c "COPY (SELECT accession FROM experiment WHERE species LIKE '{params.species}%' AND type LIKE '%BASELINE%' ORDER BY load_date) TO STDOUT WITH NULL AS ''" \
              -v ON_ERROR_STOP=1 $dbConnection > {output.baseline_accessions}
+
+        echo {input.exclusion_file}
+        # Loop through each word in exclude.txt
+        while IFS= read -r accession && [ -n "$accession" ]; do
+            # Remove the word from {output.accessions} using grep
+            grep -v "$accession" {output.accessions} > temp && mv temp {output.accessions}
+            grep -v "$accession" {output.baseline_accessions} > temp && mv temp {output.baseline_accessions}
+        done < {input.exclusion_file}
         """
 
 checkpoint divide_accessions_into_chunks:
@@ -357,6 +367,8 @@ rule update_experiment_designs:
         export output_dir={params.output_dir}
         export EXPERIMENT_FILES={params.experiment_files}
         export server_port=8081 #fake
+        export PS1="\\u@\\h:\\w\\$ "
+
 
         input_accessions={input.accessions}
 
@@ -444,6 +456,7 @@ rule update_coexpressions:
         export output_dir={params.output_dir}
         export EXPERIMENT_FILES={params.experiment_files}
         export server_port=8081 #fake
+        export PS1="\\u@\\h:\\w\\$ "
 
         input_accessions={input.baseline_accessions}
 
@@ -537,6 +550,7 @@ rule run_bioentities_JSONL_creation:
         export EXPERIMENT_FILES={params.experiment_files}
         export BIOENTITIES_JSONL_PATH={params.output_dir}
         export server_port=8081 #fake
+        export PS1="\\u@\\h:\\w\\$ "
 
         {micromamba_env}
 
@@ -567,6 +581,7 @@ rule delete_species_bioentities_index:
         exec &> "{log}"
         source {params.atlas_env_file}
         export SPECIES={params.species}
+        export PS1="\\u@\\h:\\w\\$ "
 
         {micromamba_env}
 
@@ -608,6 +623,7 @@ rule load_species_into_bioentities_index:
         export BIOENTITIES_JSONL_PATH={params.output_dir}
         export SPECIES={params.species}
         export server_port=8081 #fake
+        export PS1="\\u@\\h:\\w\\$ "
 
         {micromamba_env}
 
@@ -663,6 +679,7 @@ rule analytics_bioentities_mapping:
         export output_dir={params.output_dir}
         export SPECIES={params.species}
         export server_port=8081 #fake
+        export PS1="\\u@\\h:\\w\\$ "
 
         # needed to trigger an error code exit for mappings
         export failed_accessions_output=$prefix"/failed_accessions.txt"
@@ -719,6 +736,8 @@ rule create_analytics_jsonl_files:
         export SPECIES={params.species}
         export server_port=8081 #fake
         export BIN_MAP={params.mappings_directory}
+        export PS1="\\u@\\h:\\w\\$ "
+
 
         input_accessions={input.accessions}
 
@@ -784,6 +803,8 @@ rule load_bulk_analytics_index:
         export EXPERIMENT_FILES={params.experiment_files}
         export SPECIES={params.species}
         export server_port=8081 #fake
+        export PS1="\\u@\\h:\\w\\$ "
+
 
         input_accessions={input.accessions}
 
