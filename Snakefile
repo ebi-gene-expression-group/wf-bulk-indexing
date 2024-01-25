@@ -623,6 +623,7 @@ rule load_species_into_bioentities_index:
         export BIOENTITIES_JSONL_PATH={params.output_dir}
         export SPECIES={params.species}
         export server_port=8081 #fake
+        export PS1="\\u@\\h:\\w\\$ "
 
         {micromamba_env}
 
