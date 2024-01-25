@@ -581,6 +581,7 @@ rule delete_species_bioentities_index:
         exec &> "{log}"
         source {params.atlas_env_file}
         export SPECIES={params.species}
+        export PS1="\\u@\\h:\\w\\$ "
 
         {micromamba_env}
 
