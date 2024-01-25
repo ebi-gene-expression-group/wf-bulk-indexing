@@ -735,7 +735,7 @@ rule create_analytics_jsonl_files:
         export SPECIES={params.species}
         export server_port=8081 #fake
         export BIN_MAP={params.mappings_directory}
-        export PS1=params.ps1
+        export PS1={params.ps1}
 
         input_accessions={input.accessions}
 
