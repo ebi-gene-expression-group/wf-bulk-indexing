@@ -4,8 +4,7 @@ import re
 from textwrap import dedent
 from pathlib import Path
 
-# global variable to use
-PS1="\\u@\\h:\\w\\$ "
+PS1 = f"\\u@\\h:\\w\\$ "
 
 # atom: set grammar=python:
 
