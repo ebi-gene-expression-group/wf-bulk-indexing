@@ -357,6 +357,7 @@ rule update_experiment_designs:
         export output_dir={params.output_dir}
         export EXPERIMENT_FILES={params.experiment_files}
         export server_port=8081 #fake
+        export PS1="\\u@\\h:\\w\\$ "
 
         input_accessions={input.accessions}
 
@@ -444,6 +445,7 @@ rule update_coexpressions:
         export output_dir={params.output_dir}
         export EXPERIMENT_FILES={params.experiment_files}
         export server_port=8081 #fake
+        export PS1="\\u@\\h:\\w\\$ "
 
         input_accessions={input.baseline_accessions}
 
@@ -537,6 +539,7 @@ rule run_bioentities_JSONL_creation:
         export EXPERIMENT_FILES={params.experiment_files}
         export BIOENTITIES_JSONL_PATH={params.output_dir}
         export server_port=8081 #fake
+        export PS1="\\u@\\h:\\w\\$ "
 
         {micromamba_env}
 
@@ -567,6 +570,7 @@ rule delete_species_bioentities_index:
         exec &> "{log}"
         source {params.atlas_env_file}
         export SPECIES={params.species}
+        export PS1="\\u@\\h:\\w\\$ "
 
         {micromamba_env}
 
@@ -608,6 +612,7 @@ rule load_species_into_bioentities_index:
         export BIOENTITIES_JSONL_PATH={params.output_dir}
         export SPECIES={params.species}
         export server_port=8081 #fake
+        export PS1="\\u@\\h:\\w\\$ "
 
         {micromamba_env}
 
@@ -663,6 +668,7 @@ rule analytics_bioentities_mapping:
         export output_dir={params.output_dir}
         export SPECIES={params.species}
         export server_port=8081 #fake
+        export PS1="\\u@\\h:\\w\\$ "
 
         # needed to trigger an error code exit for mappings
         export failed_accessions_output=$prefix"/failed_accessions.txt"
@@ -719,6 +725,7 @@ rule create_analytics_jsonl_files:
         export SPECIES={params.species}
         export server_port=8081 #fake
         export BIN_MAP={params.mappings_directory}
+        export PS1="\\u@\\h:\\w\\$ "
 
         input_accessions={input.accessions}
 
@@ -784,6 +791,7 @@ rule load_bulk_analytics_index:
         export EXPERIMENT_FILES={params.experiment_files}
         export SPECIES={params.species}
         export server_port=8081 #fake
+        export PS1="\\u@\\h:\\w\\$ "
 
         input_accessions={input.accessions}
 
