@@ -4,6 +4,9 @@ import re
 from textwrap import dedent
 from pathlib import Path
 
+# global variable to use
+PS1="\\u@\\h:\\w\\$ "
+
 # atom: set grammar=python:
 
 # Note about Solr and db authentication:
@@ -339,7 +342,8 @@ rule update_experiment_designs:
         experiment_files="./experiment_files",
         atlas_exps=config['atlas_exps'],
         web_app_context=config['web_app_context'],
-        exp_design_path=config['atlas_exp_design']
+        exp_design_path=config['atlas_exp_design'],
+        ps1=PS1
     input:
         accessions="accessions_{chunk}",
         dirs_prepared=rules.prepare_directories_and_links.output.dirs_prepared
@@ -357,7 +361,7 @@ rule update_experiment_designs:
         export output_dir={params.output_dir}
         export EXPERIMENT_FILES={params.experiment_files}
         export server_port=8081 #fake
-        export PS1="\\u@\\h:\\w\\$ "
+        export PS1=params.ps1
 
         input_accessions={input.accessions}
 
@@ -427,7 +431,8 @@ rule update_coexpressions:
         experiment_files="experiment_files",
         atlas_exps=config['atlas_exps'],
         web_app_context=config['web_app_context'],
-        exp_design_path=config['atlas_exp_design']
+        exp_design_path=config['atlas_exp_design'],
+        ps1=PS1
     input:
         baseline_accessions="baseline_accessions_{chunk}",
         dirs_prepared=rules.prepare_directories_and_links.output.dirs_prepared
@@ -445,7 +450,7 @@ rule update_coexpressions:
         export output_dir={params.output_dir}
         export EXPERIMENT_FILES={params.experiment_files}
         export server_port=8081 #fake
-        export PS1="\\u@\\h:\\w\\$ "
+        export PS1=params.ps1
 
         input_accessions={input.baseline_accessions}
 
@@ -523,7 +528,8 @@ rule run_bioentities_JSONL_creation:
         experiment_files="./experiment_files",
         atlas_exps=config['atlas_exps'],
         web_app_context=config['web_app_context'],
-        exp_design_path=config['atlas_exp_design']
+        exp_design_path=config['atlas_exp_design'],
+        ps1=PS1
     resources:
         mem_mb=16000
     output:
@@ -539,7 +545,7 @@ rule run_bioentities_JSONL_creation:
         export EXPERIMENT_FILES={params.experiment_files}
         export BIOENTITIES_JSONL_PATH={params.output_dir}
         export server_port=8081 #fake
-        export PS1="\\u@\\h:\\w\\$ "
+        export PS1=params.ps1
 
         {micromamba_env}
 
@@ -559,7 +565,8 @@ rule delete_species_bioentities_index:
     log: "delete_species_bioentities_index.log"
     params:
         atlas_env_file=config['atlas_env_file'],
-        species=config['species']
+        species=config['species'],
+        ps1=PS1
     input:
         jsonl=rules.run_bioentities_JSONL_creation.output.jsonl
     output:
@@ -570,7 +577,7 @@ rule delete_species_bioentities_index:
         exec &> "{log}"
         source {params.atlas_env_file}
         export SPECIES={params.species}
-        export PS1="\\u@\\h:\\w\\$ "
+        export PS1=params.ps1
 
         {micromamba_env}
 
@@ -595,7 +602,8 @@ rule load_species_into_bioentities_index:
         experiment_files="./experiment_files",
         atlas_exps=config['atlas_exps'],
         exp_design_path=config['atlas_exp_design'],
-        species=config['species']
+        species=config['species'],
+        ps1=PS1
     input:
         jsonl=rules.run_bioentities_JSONL_creation.output.jsonl,
         deleted_confirmation=rules.delete_species_bioentities_index.output.deleted
@@ -612,7 +620,7 @@ rule load_species_into_bioentities_index:
         export BIOENTITIES_JSONL_PATH={params.output_dir}
         export SPECIES={params.species}
         export server_port=8081 #fake
-        export PS1="\\u@\\h:\\w\\$ "
+        export PS1=params.ps1
 
         {micromamba_env}
 
@@ -649,7 +657,8 @@ rule analytics_bioentities_mapping:
         output_dir="analytics_bioentities_mapping/{chunk}",
         atlas_env_file=config['atlas_env_file'],
         experiment_files="experiment_files",
-        species=config['species']
+        species=config['species'],
+        ps1=PS1
     output:
         mappings_file="analytics_bioentities_mapping/{chunk}/"+f"{config['species']}.map.bin"
     resources:
@@ -668,7 +677,7 @@ rule analytics_bioentities_mapping:
         export output_dir={params.output_dir}
         export SPECIES={params.species}
         export server_port=8081 #fake
-        export PS1="\\u@\\h:\\w\\$ "
+        export PS1=params.ps1
 
         # needed to trigger an error code exit for mappings
         export failed_accessions_output=$prefix"/failed_accessions.txt"
@@ -707,7 +716,8 @@ rule create_analytics_jsonl_files:
         mappings_directory="analytics_bioentities_mapping/{chunk}/",
         atlas_env_file=config['atlas_env_file'],
         experiment_files="experiment_files",
-        species=config['species']
+        species=config['species'],
+        ps1=PS1
     output:
         created=touch("analytics_jsonl_files/{chunk}/analytics_jsonl_files.txt")
     shell:
@@ -725,7 +735,7 @@ rule create_analytics_jsonl_files:
         export SPECIES={params.species}
         export server_port=8081 #fake
         export BIN_MAP={params.mappings_directory}
-        export PS1="\\u@\\h:\\w\\$ "
+        export PS1=params.ps1
 
         input_accessions={input.accessions}
 
@@ -775,7 +785,8 @@ rule load_bulk_analytics_index:
         analytics_jsonl_dir="analytics_jsonl_files/{chunk}",
         atlas_env_file=config['atlas_env_file'],
         experiment_files="experiment_files",
-        species=config['species']
+        species=config['species'],
+        ps1=PS1
     output:
         loaded=touch("load_bulk_analytics_index/{chunk}/analytics_index_loaded.txt")
     shell:
@@ -791,7 +802,7 @@ rule load_bulk_analytics_index:
         export EXPERIMENT_FILES={params.experiment_files}
         export SPECIES={params.species}
         export server_port=8081 #fake
-        export PS1="\\u@\\h:\\w\\$ "
+        export PS1=params.ps1
 
         input_accessions={input.accessions}
 
