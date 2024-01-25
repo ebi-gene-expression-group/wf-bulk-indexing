@@ -677,7 +677,7 @@ rule analytics_bioentities_mapping:
         export output_dir={params.output_dir}
         export SPECIES={params.species}
         export server_port=8081 #fake
-        export PS1=params.ps1
+        export PS1={params.ps1}
 
         # needed to trigger an error code exit for mappings
         export failed_accessions_output=$prefix"/failed_accessions.txt"
