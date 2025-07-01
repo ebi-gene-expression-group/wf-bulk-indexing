@@ -23,7 +23,7 @@ EXP_ID=${EXP_ID:-$2}
 [ -z ${EXP_ID+x} ] && echo "Env var EXP_ID for the id/accession of the experiment needs to be defined." && exit 1
 
 # Check that files are in place.
-marker_genes_path=$ATLAS_PROD/analysis/*/*/experiments/${EXP_ID}/${EXP_ID}_marker_gene.tsv
+marker_genes_path=$ATLAS_PROD/analysis/baseline/*/experiments/${EXP_ID}/${EXP_ID}_marker_gene.tsv
 
 [ -e $marker_genes_path ] || { echo "$EXP_ID: marker_gene.tsv missing, exiting."; exit 1; }
 
