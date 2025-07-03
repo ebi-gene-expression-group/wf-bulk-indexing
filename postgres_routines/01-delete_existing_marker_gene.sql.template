@@ -1,1 +1,1 @@
-DELETE FROM gxa_marker_gene WHERE experiment_accession=<EXP-ACCESSION>;
+DELETE FROM gxa_marker_gene WHERE experiment_accession='<EXP-ACCESSION>';
