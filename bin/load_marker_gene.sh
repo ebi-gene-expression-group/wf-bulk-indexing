@@ -28,7 +28,10 @@ for metric in $metrices;
 do
     marker_genes_path=$ATLAS_PROD/analysis/baseline/*/experiments/${EXP_ID}/${EXP_ID}-${metric}-markers.tsv
     
-    [ -e "$marker_genes_path" ] || { echo "For $EXP_ID: ${EXP_ID}-${metric}-markers.tsv missing, exiting."; exit 1; }
+    ls $marker_genes_path > /dev/null 2>&1 || {
+        echo "No matching file found for $marker_genes_path"
+        exit 1
+    }
     
 done
 
