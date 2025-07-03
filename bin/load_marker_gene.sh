@@ -37,8 +37,6 @@ do
         exit 1
     }
 
-    echo $marker_genes_path
-    
 done
 
 # Check that database connection is valid
@@ -53,6 +51,10 @@ psql -v ON_ERROR_STOP=1 "$dbConnection"
 for metric in $metrices;
 do
     marker_genes_path=$ATLAS_PROD/analysis/baseline/*/experiments/${EXP_ID}/${EXP_ID}-${metric}-markers.tsv
+
+    echo $marker_genes_path
+
+    marker_genes_path=$(ls $marker_genes_path)
 
     echo $marker_genes_path
     
