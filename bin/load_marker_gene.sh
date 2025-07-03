@@ -36,6 +36,8 @@ do
         echo "No matching file found for $marker_genes_path"
         exit 1
     }
+
+    echo $marker_genes_path
     
 done
 
