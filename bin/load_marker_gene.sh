@@ -56,6 +56,6 @@ do
 
     echo $marker_genes_path
     
-    sed "s/<PATH-TO-DATA>/$marker_genes_path/" $postgres_scripts_dir/02-load_gene_marker_table.sql.template | \
+    sed "s|<PATH-TO-DATA>|$marker_genes_path|" $postgres_scripts_dir/02-load_gene_marker_table.sql.template | \
     psql -v ON_ERROR_STOP=1 $dbConnection
 done
