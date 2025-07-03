@@ -33,7 +33,7 @@ checkDatabaseConnection $dbConnection
 
 # Deletes existing marker genes from gxa_marker_gene table 
 sed "s/<EXP-ACCESSION>/$EXP_ID/" $postgres_scripts_dir/01-delete_existing_marker_gene.sql.template | \
-psql -v ON_ERROR_STOP=1 $dbConnection
+psql -v ON_ERROR_STOP=1 "$dbConnection"
 
 # Load partition table in the same transaction.
 sed "s/<EXP-ACCESSION>/$EXP_ID/" $postgres_scripts_dir/02-load_gene_marker_table.sql.template | \
