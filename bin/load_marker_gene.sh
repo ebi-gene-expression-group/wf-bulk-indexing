@@ -53,8 +53,9 @@ psql -v ON_ERROR_STOP=1 "$dbConnection"
 for metric in $metrices;
 do
     marker_genes_path=$ATLAS_PROD/analysis/baseline/*/experiments/${EXP_ID}/${EXP_ID}-${metric}-markers.tsv
+
+    echo $marker_genes_path
     
-    sed "s/<EXP-ACCESSION>/$EXP_ID/" $postgres_scripts_dir/02-load_gene_marker_table.sql.template | \
-        sed "s+<PATH-TO-DATA>+$marker_genes_path+" | \
-        psql -v ON_ERROR_STOP=1 $dbConnection
+    sed "s/<PATH-TO-DATA>/$marker_genes_path/" $postgres_scripts_dir/02-load_gene_marker_table.sql.template | \
+    psql -v ON_ERROR_STOP=1 $dbConnection
 done
