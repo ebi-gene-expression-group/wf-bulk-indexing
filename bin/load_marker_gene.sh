@@ -25,7 +25,8 @@ EXP_ID=${EXP_ID:-$2}
 # Check that files are in place.
 marker_genes_path=$ATLAS_PROD/analysis/baseline/*/experiments/${EXP_ID}/${EXP_ID}_marker_gene.tsv
 
-[ -e $marker_genes_path ] || { echo "$EXP_ID: marker_gene.tsv missing, exiting."; exit 1; }
+[ -e "$marker_genes_path" ] || { echo "$EXP_ID: marker_gene.tsv missing, exiting."; exit 1; }
+
 
 # Check that database connection is valid
 checkDatabaseConnection $dbConnection
