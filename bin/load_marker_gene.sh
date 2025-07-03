@@ -57,7 +57,10 @@ do
     marker_genes_path=$(ls $marker_genes_path)
 
     echo $marker_genes_path
+
+    # removes header
+    tail -n +2 ${marker_genes_path} > ${marker_genes_path}.no_header.tsv
     
-    sed "s|<PATH-TO-DATA>|$marker_genes_path|" $postgres_scripts_dir/02-load_gene_marker_table.sql.template | \
+    sed "s|<PATH-TO-DATA>|${marker_genes_path}.no_header.tsv|" $postgres_scripts_dir/02-load_gene_marker_table.sql.template | \
     psql -v ON_ERROR_STOP=1 $dbConnection
 done
