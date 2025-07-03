@@ -1,1 +1,1 @@
-\copy gxa_marker_gene FROM '<PATH-TO-DATA>' WITH (DELIMITER E'\t', HEADER);
+\copy gxa_marker_gene FROM '<PATH-TO-DATA>' WITH (DELIMITER E'\t');
