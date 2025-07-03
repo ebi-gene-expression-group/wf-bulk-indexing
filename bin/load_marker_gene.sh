@@ -17,7 +17,7 @@ postgres_scripts_dir="${SCRIPT_DIR}/../postgres_routines"
 
 dbConnection=${dbConnection:-$1}
 EXP_ID=${EXP_ID:-$2}
-metrices="tpm fpkm" # add proteomics
+metrices="tpms fpkms" # add proteomics
 
 # Check that necessary environment variables are defined.
 [ -z ${dbConnection+x} ] && echo "Env var dbConnection for the database connection needs to be defined. This includes the database name." && exit 1
