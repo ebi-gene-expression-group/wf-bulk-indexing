@@ -26,8 +26,13 @@ EXP_ID=${EXP_ID:-$2}
 metrices="tpms fpkms" # add proteomics
 
 # Check that necessary environment variables are defined.
-[ -z ${dbConnection+x} ] && echo "Env var dbConnection for the database connection needs to be defined. This includes the database name." && exit 1
-[ -z ${EXP_ID+x} ] && echo "Env var EXP_ID for the id/accession of the experiment needs to be defined." && exit 1
+check_env() {
+  [[ -z "${dbConnection:-}" ]] && dbConnection="${1:-}"
+  [[ -z "${EXP_ID:-}" ]] && EXP_ID="${2:-}"
+  [[ -z "$dbConnection" ]] && error_exit "Env var dbConnection (database connection string) is required."
+  [[ -z "$EXP_ID" ]] && error_exit "Env var EXP_ID (experiment accession) is required."
+  [[ -z "${ATLAS_PROD:-}" ]] && error_exit "Env var ATLAS_PROD (base directory) is required."
+}
 
 # Check that files are in place.
 for metric in "${METRICS[@]}";
@@ -78,10 +83,14 @@ load_marker_data() {
   rm -f "$no_header_file"
 }
 
+main() {
+  check_env "$@"
+  check_db_connection
+  delete_old_data
+  for metric in "${METRICS[@]}";
+  do
+      load_marker_data "$metric"
+  done
+}
 
-check_db_connection
-delete_old_data
-for metric in "${METRICS[@]}";
-do
-    load_marker_data "$metric"
-done
+main "$@"
