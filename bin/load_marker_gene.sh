@@ -23,15 +23,11 @@ METRICS=("tpms" "fpkms")  # Add more metrics as needed
 
 dbConnection=${dbConnection:-$1}
 EXP_ID=${EXP_ID:-$2}
-metrices="tpms fpkms" # add proteomics
 
 # Check that necessary environment variables are defined.
 check_env() {
-  [[ -z "${dbConnection:-}" ]] && dbConnection="${1:-}"
-  [[ -z "${EXP_ID:-}" ]] && EXP_ID="${2:-}"
-  [[ -z "$dbConnection" ]] && error_exit "Env var dbConnection (database connection string) is required."
-  [[ -z "$EXP_ID" ]] && error_exit "Env var EXP_ID (experiment accession) is required."
-  [[ -z "${ATLAS_PROD:-}" ]] && error_exit "Env var ATLAS_PROD (base directory) is required."
+  [ -z ${dbConnection+x} ] && error_exit  "Env var dbConnection for the database connection needs to be defined. This includes the database name."
+  [ -z ${EXP_ID+x} ] && error_exit  "Env var EXP_ID for the id/accession of the experiment needs to be defined."
 }
 
 # Check that files are in place.
