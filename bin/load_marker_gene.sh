@@ -80,7 +80,7 @@ load_marker_data() {
 }
 
 main() {
-  check_env "$@"
+  check_env
   check_db_connection
   delete_old_data
   for metric in "${METRICS[@]}";
@@ -89,4 +89,4 @@ main() {
   done
 }
 
-main "$@"
+main
