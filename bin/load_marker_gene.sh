@@ -11,66 +11,58 @@
 # 
 set -e
 
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]:-$0}")" &>/dev/null && pwd)"
-POSTGRES_SCRIPTS_DIR="${SCRIPT_DIR}/../postgres_routines"
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]:-$0}" )" &> /dev/null && pwd )
 
-METRICS=("tpms" "fpkms")  # Add more metrics as needed
+postgres_scripts_dir="${SCRIPT_DIR}/../postgres_routines"
 
-error_exit() {
-  echo "[ERROR] $1" >&2
-  exit 1
+checkDatabaseConnection() {
+  psql $1 -c '\q' > /dev/null 2>&1 || { echo "PostgreSQL is not ready"; }
 }
 
-check_env() {
-  [[ -z "${dbConnection:-}" ]] && dbConnection="${1:-}"
-  [[ -z "${EXP_ID:-}" ]] && EXP_ID="${2:-}"
-  [[ -z "$dbConnection" ]] && error_exit "Env var dbConnection (database connection string) is required."
-  [[ -z "$EXP_ID" ]] && error_exit "Env var EXP_ID (experiment accession) is required."
-  [[ -z "${ATLAS_PROD:-}" ]] && error_exit "Env var ATLAS_PROD (base directory) is required."
-}
+dbConnection=${dbConnection:-$1}
+EXP_ID=${EXP_ID:-$2}
+metrices="tpms fpkms" # add proteomics
 
-check_db_connection() {
-  psql "$dbConnection" -c '\q' &>/dev/null || error_exit "PostgreSQL is not ready or connection failed."
-}
+# Check that necessary environment variables are defined.
+[ -z ${dbConnection+x} ] && echo "Env var dbConnection for the database connection needs to be defined. This includes the database name." && exit 1
+[ -z ${EXP_ID+x} ] && echo "Env var EXP_ID for the id/accession of the experiment needs to be defined." && exit 1
 
-find_marker_file() {
-  local metric="$1"
-  local path_pattern="${ATLAS_PROD}/analysis/baseline/*/experiments/${EXP_ID}/${EXP_ID}-${metric}-markers.tsv"
-  local file
-  file=$(ls $path_pattern 2>/dev/null | head -n1) || error_exit "No file found for pattern: $path_pattern"
-  echo "$file"
-}
+# Check that files are in place.
+for metric in $metrices;
+do
+    marker_genes_path=$ATLAS_PROD/analysis/baseline/*/experiments/${EXP_ID}/${EXP_ID}-${metric}-markers.tsv
+    
+    ls $marker_genes_path > /dev/null 2>&1 || {
+        echo "No matching file found for $marker_genes_path"
+        exit 1
+    }
 
-delete_old_data() {
-  local sql_file="${POSTGRES_SCRIPTS_DIR}/01-delete_existing_marker_gene.sql.template"
-  [[ ! -f "$sql_file" ]] && error_exit "SQL template not found: $sql_file"
-  sed "s/<EXP-ACCESSION>/$EXP_ID/" "$sql_file" | psql -v ON_ERROR_STOP=1 "$dbConnection"
-}
+done
 
-load_marker_data() {
-  local metric="$1"
-  local marker_file
-  marker_file=$(find_marker_file "$metric")
-  echo "Processing file: $marker_file"
+# Check that database connection is valid
+checkDatabaseConnection $dbConnection
+    
+# Deletes existing marker genes from gxa_marker_gene table 
+sed "s/<EXP-ACCESSION>/$EXP_ID/" $postgres_scripts_dir/01-delete_existing_marker_gene.sql.template | \
+psql -v ON_ERROR_STOP=1 "$dbConnection"
 
-  local no_header_file="${marker_file}.no_header.tsv"
-  tail -n +2 "$marker_file" > "$no_header_file"
+# Load gene marker table
+    
+for metric in $metrices;
+do
+    marker_genes_path=$ATLAS_PROD/analysis/baseline/*/experiments/${EXP_ID}/${EXP_ID}-${metric}-markers.tsv
 
-  local sql_file="${POSTGRES_SCRIPTS_DIR}/02-load_gene_marker_table.sql.template"
-  [[ ! -f "$sql_file" ]] && error_exit "SQL template not found: $sql_file"
-  sed "s|<PATH-TO-DATA>|$no_header_file|" "$sql_file" | psql -v ON_ERROR_STOP=1 "$dbConnection"
+    echo $marker_genes_path
 
-  rm -f "$no_header_file"
-}
+    marker_genes_path=$(ls $marker_genes_path)
 
-main() {
-  check_env "$@"
-  check_db_connection
-  delete_old_data
+    echo $marker_genes_path
 
-  for metric in "${METRICS[@]}"; do
-    load_marker_data "$metric"
-  done
-}
+    # removes header
+    tail -n +2 ${marker_genes_path} > ${marker_genes_path}.no_header.tsv
+    
+    sed "s|<PATH-TO-DATA>|${marker_genes_path}.no_header.tsv|" $postgres_scripts_dir/02-load_gene_marker_table.sql.template | \
+    psql -v ON_ERROR_STOP=1 $dbConnection
 
-main "$@"
+    rm -rf ${marker_genes_path}.no_header.tsv
+done
