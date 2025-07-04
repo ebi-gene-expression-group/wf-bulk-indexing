@@ -47,22 +47,24 @@ sed "s/<EXP-ACCESSION>/$EXP_ID/" $postgres_scripts_dir/01-delete_existing_marker
 psql -v ON_ERROR_STOP=1 "$dbConnection"
 
 # Load gene marker table
-    
+load_marker_data() {
+  local metric="$1"
+  local marker_file
+  marker_file=$(find_marker_file "$metric")
+  echo "Processing file: $marker_file"
+
+  local no_header_file="${marker_file}.no_header.tsv"
+  tail -n +2 "$marker_file" > "$no_header_file"
+
+  local sql_file="${POSTGRES_SCRIPTS_DIR}/02-load_gene_marker_table.sql.template"
+  [[ ! -f "$sql_file" ]] && error_exit "SQL template not found: $sql_file"
+  sed "s|<PATH-TO-DATA>|$no_header_file|" "$sql_file" | psql -v ON_ERROR_STOP=1 "$dbConnection"
+
+  rm -f "$no_header_file"
+}
+
+
 for metric in $metrices;
 do
-    marker_genes_path=$ATLAS_PROD/analysis/baseline/*/experiments/${EXP_ID}/${EXP_ID}-${metric}-markers.tsv
-
-    echo $marker_genes_path
-
-    marker_genes_path=$(ls $marker_genes_path)
-
-    echo $marker_genes_path
-
-    # removes header
-    tail -n +2 ${marker_genes_path} > ${marker_genes_path}.no_header.tsv
-    
-    sed "s|<PATH-TO-DATA>|${marker_genes_path}.no_header.tsv|" $postgres_scripts_dir/02-load_gene_marker_table.sql.template | \
-    psql -v ON_ERROR_STOP=1 $dbConnection
-
-    rm -rf ${marker_genes_path}.no_header.tsv
+    load_marker_data "$metric"
 done
