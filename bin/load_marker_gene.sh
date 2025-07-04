@@ -25,22 +25,9 @@ dbConnection=${dbConnection:-$1}
 EXP_ID=${EXP_ID:-$2}
 
 # Check that necessary environment variables are defined.
-# check_env() {
-  [ -z ${dbConnection+x} ] && error_exit  "Env var dbConnection for the database connection needs to be defined. This includes the database name."
-  [ -z ${EXP_ID+x} ] && error_exit  "Env var EXP_ID for the id/accession of the experiment needs to be defined."
-# }
+[ -z ${dbConnection+x} ] && error_exit  "Env var dbConnection for the database connection needs to be defined. This includes the database name."
+[ -z ${EXP_ID+x} ] && error_exit  "Env var EXP_ID for the id/accession of the experiment needs to be defined."
 
-# Check that files are in place.
-for metric in "${METRICS[@]}";
-do
-    marker_genes_path=$ATLAS_PROD/analysis/baseline/*/experiments/${EXP_ID}/${EXP_ID}-${metric}-markers.tsv
-    
-    ls $marker_genes_path > /dev/null 2>&1 || {
-        echo "No matching file found for $marker_genes_path"
-        exit 1
-    }
-
-done
 
 # Check that database connection is valid
 check_db_connection() {
@@ -79,14 +66,10 @@ load_marker_data() {
   rm -f "$no_header_file"
 }
 
-# main() {
-  # check_env
-  check_db_connection
-  delete_old_data
-  for metric in "${METRICS[@]}";
-  do
-      load_marker_data "$metric"
-  done
-# }
 
-# main
+check_db_connection
+delete_old_data
+for metric in "${METRICS[@]}";
+do
+    load_marker_data "$metric"
+done
