@@ -63,4 +63,6 @@ do
     
     sed "s|<PATH-TO-DATA>|${marker_genes_path}.no_header.tsv|" $postgres_scripts_dir/02-load_gene_marker_table.sql.template | \
     psql -v ON_ERROR_STOP=1 $dbConnection
+
+    rm -rf ${marker_genes_path}.no_header.tsv
 done
