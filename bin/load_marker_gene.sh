@@ -79,7 +79,7 @@ load_marker_data() {
   rm -f "$no_header_file"
 }
 
-main() {
+# main() {
   check_env
   check_db_connection
   delete_old_data
@@ -87,6 +87,6 @@ main() {
   do
       load_marker_data "$metric"
   done
-}
+# }
 
-main
+# main
