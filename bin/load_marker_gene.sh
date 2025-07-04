@@ -21,11 +21,11 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]:-$0}")" &>/dev/null && pwd)"
 POSTGRES_SCRIPTS_DIR="${SCRIPT_DIR}/../postgres_routines"
 METRICS=("tpms" "fpkms")  # Add more metrics as needed
 
-dbConnection=${dbConnection:-$1}
-EXP_ID=${EXP_ID:-$2}
+# dbConnection=${dbConnection:-$1}
+EXP_ID=${EXP_ID:-$1}
 
 # Check that necessary environment variables are defined.
-[ -z ${dbConnection+x} ] && error_exit  "Env var dbConnection for the database connection needs to be defined. This includes the database name."
+[ -z ${dbConnection+x} ] && error_exit  "Env var dbConnection for the database connection needs to be defined."
 [ -z ${EXP_ID+x} ] && error_exit  "Env var EXP_ID for the id/accession of the experiment needs to be defined."
 
 
