@@ -21,7 +21,6 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]:-$0}")" &>/dev/null && pwd)"
 POSTGRES_SCRIPTS_DIR="${SCRIPT_DIR}/../postgres_routines"
 METRICS=("tpms" "fpkms")  # Add more metrics as needed
 
-# dbConnection=${dbConnection:-$1}
 EXP_ID=${EXP_ID:-$1}
 
 # Check that necessary environment variables are defined.
@@ -32,6 +31,7 @@ EXP_ID=${EXP_ID:-$1}
 # Check that database connection is valid
 check_db_connection() {
   psql "$dbConnection" -c '\q' &>/dev/null || error_exit "PostgreSQL is not ready or connection failed."
+  echo "Database connection established using $dbConnection."
 }
     
 # Deletes existing marker genes from gxa_marker_gene table 
