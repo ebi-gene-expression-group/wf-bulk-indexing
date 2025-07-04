@@ -17,9 +17,11 @@ error_exit() {
 }
 
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]:-$0}" )" &> /dev/null && pwd )
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]:-$0}")" &>/dev/null && pwd)"
+POSTGRES_SCRIPTS_DIR="${SCRIPT_DIR}/../postgres_routines"
+METRICS=("tpms" "fpkms")  # Add more metrics as needed
 
-postgres_scripts_dir="${SCRIPT_DIR}/../postgres_routines"
+
 
 checkDatabaseConnection() {
   psql $1 -c '\q' > /dev/null 2>&1 || { echo "PostgreSQL is not ready"; }
@@ -34,7 +36,7 @@ metrices="tpms fpkms" # add proteomics
 [ -z ${EXP_ID+x} ] && echo "Env var EXP_ID for the id/accession of the experiment needs to be defined." && exit 1
 
 # Check that files are in place.
-for metric in $metrices;
+for metric in "${METRICS[@]}";
 do
     marker_genes_path=$ATLAS_PROD/analysis/baseline/*/experiments/${EXP_ID}/${EXP_ID}-${metric}-markers.tsv
     
@@ -78,7 +80,7 @@ load_marker_data() {
 }
 
 
-for metric in $metrices;
+for metric in "${METRICS[@]}";
 do
     load_marker_data "$metric"
 done
