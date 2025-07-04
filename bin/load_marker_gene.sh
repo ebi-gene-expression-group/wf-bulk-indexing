@@ -25,10 +25,10 @@ dbConnection=${dbConnection:-$1}
 EXP_ID=${EXP_ID:-$2}
 
 # Check that necessary environment variables are defined.
-check_env() {
+# check_env() {
   [ -z ${dbConnection+x} ] && error_exit  "Env var dbConnection for the database connection needs to be defined. This includes the database name."
   [ -z ${EXP_ID+x} ] && error_exit  "Env var EXP_ID for the id/accession of the experiment needs to be defined."
-}
+# }
 
 # Check that files are in place.
 for metric in "${METRICS[@]}";
@@ -80,7 +80,7 @@ load_marker_data() {
 }
 
 # main() {
-  check_env
+  # check_env
   check_db_connection
   delete_old_data
   for metric in "${METRICS[@]}";
