@@ -21,12 +21,6 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]:-$0}")" &>/dev/null && pwd)"
 POSTGRES_SCRIPTS_DIR="${SCRIPT_DIR}/../postgres_routines"
 METRICS=("tpms" "fpkms")  # Add more metrics as needed
 
-
-
-checkDatabaseConnection() {
-  psql $1 -c '\q' > /dev/null 2>&1 || { echo "PostgreSQL is not ready"; }
-}
-
 dbConnection=${dbConnection:-$1}
 EXP_ID=${EXP_ID:-$2}
 metrices="tpms fpkms" # add proteomics
@@ -48,7 +42,9 @@ do
 done
 
 # Check that database connection is valid
-checkDatabaseConnection $dbConnection
+check_db_connection() {
+  psql "$dbConnection" -c '\q' &>/dev/null || error_exit "PostgreSQL is not ready or connection failed."
+}
     
 # Deletes existing marker genes from gxa_marker_gene table 
 delete_old_data() {
@@ -82,6 +78,8 @@ load_marker_data() {
   rm -f "$no_header_file"
 }
 
+
+check_db_connection
 delete_old_data
 for metric in "${METRICS[@]}";
 do
