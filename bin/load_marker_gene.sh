@@ -46,6 +46,14 @@ checkDatabaseConnection $dbConnection
 sed "s/<EXP-ACCESSION>/$EXP_ID/" $postgres_scripts_dir/01-delete_existing_marker_gene.sql.template | \
 psql -v ON_ERROR_STOP=1 "$dbConnection"
 
+find_marker_file() {
+  local metric="$1"
+  local path_pattern="${ATLAS_PROD}/analysis/baseline/*/experiments/${EXP_ID}/${EXP_ID}-${metric}-markers.tsv"
+  local file
+  file=$(ls $path_pattern 2>/dev/null | head -n1) || error_exit "No file found for pattern: $path_pattern"
+  echo "$file"
+}
+
 # Load gene marker table
 load_marker_data() {
   local metric="$1"
