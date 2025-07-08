@@ -45,7 +45,7 @@ find_marker_file() {
   local metric="$1"
   local path_pattern="${ATLAS_EXPS}/${EXP_ID}/${EXP_ID}-${metric}-markers.tsv"
   local file
-  file=$(ls $path_pattern 2>/dev/null | head -n1) || error_exit "No file found for pattern: $path_pattern"
+  file=$(ls $path_pattern 2>/dev/null | head -n1)
   echo "$file"
 }
 
@@ -69,7 +69,19 @@ load_marker_data() {
 
 check_db_connection
 delete_old_data
+
+found_any=0
 for metric in "${METRICS[@]}";
 do
-    load_marker_data "$metric"
+    marker_file=$(find_marker_file "$metric")
+    if [[ -n "$marker_file" ]]; then
+      load_marker_data "$metric"
+      found_any=1
+    else
+        echo "No marker file found for metric: ${metric} in ${EXP_ID}"
+    fi
 done
+
+if [[ $found_any -eq 0 ]]; then
+    error_exit "No marker files found for metrics ${METRICS[@]} in ${EXP_ID}."
+fi
