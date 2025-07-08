@@ -43,7 +43,7 @@ delete_old_data() {
 
 find_marker_file() {
   local metric="$1"
-  local path_pattern="${ATLAS_PROD}/analysis/baseline/*/experiments/${EXP_ID}/${EXP_ID}-${metric}-markers.tsv"
+  local path_pattern="${ATLAS_EXPS}/${EXP_ID}/${EXP_ID}-${metric}-markers.tsv"
   local file
   file=$(ls $path_pattern 2>/dev/null | head -n1) || error_exit "No file found for pattern: $path_pattern"
   echo "$file"
