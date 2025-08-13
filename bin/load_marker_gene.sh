@@ -43,7 +43,7 @@ delete_old_data() {
 
 find_marker_file() {
   local metric="$1"
-  local path_pattern="${ATLAS_EXPS}/${EXP_ID}/${EXP_ID}-${metric}-markers.tsv"
+  local path_pattern="${ATLAS_EXPS}/${EXP_ID}/${EXP_ID}-${metric}markers.tsv"
   local file
   file=$(ls $path_pattern 2>/dev/null | head -n1)
   echo "$file"
@@ -71,17 +71,23 @@ check_db_connection
 delete_old_data
 
 found_any=0
-for metric in "${METRICS[@]}";
-do
-    marker_file=$(find_marker_file "$metric")
-    if [[ -n "$marker_file" ]]; then
-      load_marker_data "$metric"
+
+if [[ $EXP_ID =~ ^E-PROT-[0-9]+$ ]]; then
+      load_marker_data ""
       found_any=1
-    else
-        echo "No marker file found for metric: ${metric} in ${EXP_ID}"
-    fi
-done
+else
+  for metric in "${METRICS[@]}";
+  do
+      marker_file=$(find_marker_file "$metric")
+      if [[ -n "$marker_file" ]]; then
+        load_marker_data "$metric-"
+        found_any=1
+      else
+        echo "WARNING: No marker file found for metric: ${metric} in ${EXP_ID}"
+      fi
+  done
+fi
 
 if [[ $found_any -eq 0 ]]; then
-    error_exit "No marker files found for metrics ${METRICS[@]} in ${EXP_ID}."
+    error_exit "ERROR: No marker files found for ${EXP_ID}."
 fi
