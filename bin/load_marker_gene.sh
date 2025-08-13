@@ -54,16 +54,20 @@ load_marker_data() {
   local metric="$1"
   local marker_file
   marker_file=$(find_marker_file "$metric")
-  echo "Processing file: $marker_file"
-
-  local no_header_file="${marker_file}.no_header.tsv"
-  tail -n +2 "$marker_file" > "$no_header_file"
-
-  local sql_file="${POSTGRES_SCRIPTS_DIR}/02-load_gene_marker_table.sql.template"
-  [[ ! -f "$sql_file" ]] && error_exit "SQL template not found: $sql_file"
-  sed "s|<PATH-TO-DATA>|$no_header_file|" "$sql_file" | psql -v ON_ERROR_STOP=1 "$dbConnection"
-
-  rm -f "$no_header_file"
+  
+  if [[ -z "$marker_file" ]]; then
+    echo "${1} Marker file not found."
+  else
+    echo "Processing file: $marker_file"
+  
+    local no_header_file="${marker_file}.no_header.tsv"
+    tail -n +2 "$marker_file" > "$no_header_file"
+  
+    local sql_file="${POSTGRES_SCRIPTS_DIR}/02-load_gene_marker_table.sql.template"
+    [[ ! -f "$sql_file" ]] && error_exit "SQL template not found: $sql_file"
+    sed "s|<PATH-TO-DATA>|$no_header_file|" "$sql_file" | psql -v ON_ERROR_STOP=1 "$dbConnection"
+    rm -f "$no_header_file"
+  fi
 }
 
 
