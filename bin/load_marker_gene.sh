@@ -46,7 +46,6 @@ find_marker_file() {
   local path_pattern="${ATLAS_EXPS}/${EXP_ID}/${EXP_ID}-${metric}markers.tsv"
   local file
   file=$(ls $path_pattern 2>/dev/null | head -n1)
-  echo "$file"
 }
 
 # Load gene marker table
@@ -82,7 +81,7 @@ if [[ $EXP_ID =~ ^E-PROT-[0-9]+$ ]]; then
 else
   for metric in "${METRICS[@]}";
   do
-      marker_file=$(find_marker_file "$metric")
+      marker_file=$(find_marker_file "$metric-")
       if [[ -n "$marker_file" ]]; then
         load_marker_data "$metric-"
         found_any=1
