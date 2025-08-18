@@ -42,10 +42,14 @@ delete_old_data() {
 }
 
 find_marker_file() {
+  echo "find_marker_file"
   local metric="$1"
+  echo "metric@${metric}@"
   local path_pattern="${ATLAS_EXPS}/${EXP_ID}/${EXP_ID}-${metric}markers.tsv"
+  echo "path_pattern@${path_pattern}"
   local file
   file=$(ls $path_pattern 2>/dev/null | head -n1)
+  echo "file@${file}@"
 }
 
 # Load gene marker table
