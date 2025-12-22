@@ -398,7 +398,7 @@ rule sync_experiment_designs:
     log: "update_experiment_designs/{chunk}/sync_experiment_designs.log"
     threads: get_sync_cpus
     resources:
-        slurm_partition="datamover"
+        partition="datamover"
     input:
         source_accs="accessions_{chunk}",
         update_exp_designs_done="update_experiment_designs/{chunk}/exp_designs_updates.txt"
