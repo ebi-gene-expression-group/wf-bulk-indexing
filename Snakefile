@@ -330,7 +330,7 @@ rule update_experiment_designs:
 
     Later on, rule sync_experiment_designs does an rsync to the specified tomcat machine (based on config).
     """
-    container: "docker://quay.io/ebigxa/atlas-index-base:1.7"
+    container: "docker://quay.io/ebigxa/atlas-index-base:1.8"
     log: "update_experiment_designs/{chunk}/update_experiment_designs.log"
     resources:
         mem_mb=get_mem_mb
@@ -421,7 +421,7 @@ rule update_coexpressions:
 
     Happens per accession.
     """
-    container: "docker://quay.io/ebigxa/atlas-index-base:1.7"
+    container: "docker://quay.io/ebigxa/atlas-index-base:1.8"
     log: "update_coexpressions/{chunk}/update_coexpressions.log"
     resources:
         mem_mb=get_coexp_mem_mb
@@ -517,7 +517,7 @@ rule run_bioentities_JSONL_creation:
 
     TODO: avoid this to run in the per experiment loading scenario.
     """
-    container: "docker://quay.io/ebigxa/atlas-index-base:1.7"
+    container: "docker://quay.io/ebigxa/atlas-index-base:1.8"
     log: "create_bioentities_jsonl.log"
     input:
         staged_files=rules.stage_files_for_species.output.staged_files,
@@ -562,7 +562,7 @@ rule delete_species_bioentities_index:
     This won't run if the JSONLs in run_bioentities_JSONL creation rule are not created.
     """
     container:
-        "docker://quay.io/ebigxa/atlas-index-base:1.7"
+        "docker://quay.io/ebigxa/atlas-index-base:1.8"
     log: "delete_species_bioentities_index.log"
     params:
         atlas_env_file=config['atlas_env_file'],
@@ -594,7 +594,7 @@ rule load_species_into_bioentities_index:
     This won't run if the JSONL and previous deletion don't happen.
     """
     container:
-        "docker://quay.io/ebigxa/atlas-index-base:1.7"
+        "docker://quay.io/ebigxa/atlas-index-base:1.8"
     log: "load_species_into_bioentities_index.log"
     params:
         bioentities="./",
@@ -646,7 +646,7 @@ rule analytics_bioentities_mapping:
     """
     log: "analytics_bioentities_mapping/{chunk}/analytics_mapping.log"
     container:
-        "docker://quay.io/ebigxa/atlas-index-base:1.7"
+        "docker://quay.io/ebigxa/atlas-index-base:1.8"
     input:
         # This could optionally be either that file or a file given with specific accessions to redo.
         # or maybe the accessions broken in chunks.
@@ -703,7 +703,7 @@ rule create_analytics_jsonl_files:
     """
     log: "analytics_jsonl_files/{chunk}/analytics_jsonl_files.log"
     container:
-        "docker://quay.io/ebigxa/atlas-index-base:1.7"
+        "docker://quay.io/ebigxa/atlas-index-base:1.8"
     input:
         # This could optionally be either that file or a file given with specific accessions to redo.
         # or maybe the accessions broken in chunks.
@@ -776,7 +776,7 @@ rule load_bulk_analytics_index:
     """
     log: "load_bulk_analytics_index/{chunk}/load_bulk_analytics_index.log"
     container:
-        "docker://quay.io/ebigxa/atlas-index-base:1.7"
+        "docker://quay.io/ebigxa/atlas-index-base:1.8"
     input:
         jsonl_created=rules.create_analytics_jsonl_files.output.created,
         accessions="accessions_{chunk}"
