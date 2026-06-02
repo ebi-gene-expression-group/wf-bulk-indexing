@@ -5,3 +5,4 @@
 [submodule "index-bioentities"]
 	path = index-bioentities
 	url = https://github.com/ebi-gene-expression-group/index-bioentities
+	branch =  feature/gxa-599-populate-bulk-on-k8s     # change to develop for production
