@@ -645,6 +645,8 @@ rule analytics_bioentities_mapping:
     This needs to happen both in general updating loading (post E! Update) and for accession specific loading.
     """
     log: "analytics_bioentities_mapping/{chunk}/analytics_mapping.log"
+    resources:
+        slurm_partition="datamover"
     container:
         "docker://quay.io/ebigxa/atlas-index-base:1.9"
     input:
