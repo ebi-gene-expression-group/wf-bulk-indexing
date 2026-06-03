@@ -36,8 +36,11 @@ check_db_connection() {
     
 # Deletes existing marker genes from gxa_marker_gene table 
 delete_old_data() {
+  echo "Deleting markers for: $EXP_ID"
   local sql_file="${POSTGRES_SCRIPTS_DIR}/01-delete_existing_marker_gene.sql.template"
   [[ ! -f "$sql_file" ]] && error_exit "SQL template not found: $sql_file"
+  test_sql=$(sed "s/<EXP-ACCESSION>/$EXP_ID/" "$sql_file")
+  echo "Deleting markers for: $EXP_ID using $test_sql"
   sed "s/<EXP-ACCESSION>/$EXP_ID/" "$sql_file" | psql -v ON_ERROR_STOP=1 "$dbConnection"
 }
 

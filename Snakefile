@@ -205,6 +205,7 @@ rule get_accessions_for_species:
     Step 4 should ensure that this specific rule doesn't run, and that only the desired accessions are loaded.
     """
     log: "get_accessions_for_species.log"
+    benchmark: "benchmarks/get_accessions_for_species.tsv"
     params:
         species=species_for_db(config['species']),
         atlas_env_file=config['atlas_env_file']
@@ -226,6 +227,7 @@ rule get_accessions_for_species:
 
 checkpoint divide_accessions_into_chunks:
     log: "divide_accessions_into_chunks.log"
+    benchmark: "benchmarks/divide_accessions_into_chunks.tsv"
     params:
         lines_per_split=50,
         lines_per_split_baseline=5
@@ -251,6 +253,7 @@ rule stage_files_for_species:
     during the loading of specific experiments, as no new species are dealt with at that point.
     """
     log: "staging.log"
+    benchmark: "benchmarks/stage_files_for_species.tsv"
     input:
         directories=get_bioentities_directories_to_stage()
     output:
@@ -281,7 +284,7 @@ rule stage_files_for_species:
                       mkdir -p {dest}
                       {call}
                       """
-            shell(command)
+            shell(command, bench_record=bench_record)
             print(f"{dir} staged")
 
 
@@ -291,6 +294,7 @@ rule prepare_directories_and_links:
     in the stage_files_for_species rule. This again is needed everytime that we do an E! Update.
     """
     log: "prepare_directories_and_links.log"
+    benchmark: "benchmarks/prepare_directories_and_links.tsv"
     input:
         staged_files=rules.stage_files_for_species.output.staged_files
     params:
@@ -330,8 +334,9 @@ rule update_experiment_designs:
 
     Later on, rule sync_experiment_designs does an rsync to the specified tomcat machine (based on config).
     """
-    container: "docker://quay.io/ebigxa/atlas-index-base:1.5"
+    container: "docker://quay.io/ebigxa/atlas-index-base:1.9"
     log: "update_experiment_designs/{chunk}/update_experiment_designs.log"
+    benchmark: "benchmarks/update_experiment_designs/{chunk}.tsv"
     resources:
         mem_mb=get_mem_mb
     params:
@@ -396,7 +401,10 @@ rule sync_experiment_designs:
     config['exp_update_sync_dest']. This step doesn't get executed if this config is not set.
     """
     log: "update_experiment_designs/{chunk}/sync_experiment_designs.log"
+    benchmark: "benchmarks/sync_experiment_designs/{chunk}.tsv"
     threads: get_sync_cpus
+    resources:
+        slurm_partition="datamover"
     input:
         source_accs="accessions_{chunk}",
         update_exp_designs_done="update_experiment_designs/{chunk}/exp_designs_updates.txt"
@@ -419,8 +427,9 @@ rule update_coexpressions:
 
     Happens per accession.
     """
-    container: "docker://quay.io/ebigxa/atlas-index-base:1.5"
+    container: "docker://quay.io/ebigxa/atlas-index-base:1.9"
     log: "update_coexpressions/{chunk}/update_coexpressions.log"
+    benchmark: "benchmarks/update_coexpressions/{chunk}.tsv"
     resources:
         mem_mb=get_coexp_mem_mb
     params:
@@ -482,6 +491,7 @@ rule update_coexpressions:
 rule aggregate_update_experiment:
     input: aggregate_accessions_update_experiment
     output: "exp_designs_updates.done"
+    benchmark: "benchmarks/aggregate_update_experiment.tsv"
     shell:
         """
         touch {output}
@@ -490,6 +500,7 @@ rule aggregate_update_experiment:
 rule aggregate_sync_experiment_designs:
     input: aggregate_accessions_sync_experiment_designs
     output: "sync_exp_designs.done"
+    benchmark: "benchmarks/aggregate_sync_experiment_designs.tsv"
     shell:
         """
         touch {output}
@@ -498,6 +509,7 @@ rule aggregate_sync_experiment_designs:
 rule aggregate_update_coexpression:
     input: aggregate_baseline_accessions_update_coexpression
     output: "coexpression_updates.done"
+    benchmark: "benchmarks/aggregate_update_coexpression.tsv"
     shell:
         """
         touch {output}
@@ -515,8 +527,9 @@ rule run_bioentities_JSONL_creation:
 
     TODO: avoid this to run in the per experiment loading scenario.
     """
-    container: "docker://quay.io/ebigxa/atlas-index-base:1.5"
+    container: "docker://quay.io/ebigxa/atlas-index-base:1.9"
     log: "create_bioentities_jsonl.log"
+    benchmark: "benchmarks/run_bioentities_JSONL_creation.tsv"
     input:
         staged_files=rules.stage_files_for_species.output.staged_files,
         dirs_prepared=rules.prepare_directories_and_links.output.dirs_prepared
@@ -560,8 +573,9 @@ rule delete_species_bioentities_index:
     This won't run if the JSONLs in run_bioentities_JSONL creation rule are not created.
     """
     container:
-        "docker://quay.io/ebigxa/atlas-index-base:1.5"
+        "docker://quay.io/ebigxa/atlas-index-base:1.9"
     log: "delete_species_bioentities_index.log"
+    benchmark: "benchmarks/delete_species_bioentities_index.tsv"
     params:
         atlas_env_file=config['atlas_env_file'],
         species=config['species'],
@@ -592,8 +606,9 @@ rule load_species_into_bioentities_index:
     This won't run if the JSONL and previous deletion don't happen.
     """
     container:
-        "docker://quay.io/ebigxa/atlas-index-base:1.5"
+        "docker://quay.io/ebigxa/atlas-index-base:1.9"
     log: "load_species_into_bioentities_index.log"
+    benchmark: "benchmarks/load_species_into_bioentities_index.tsv"
     params:
         bioentities="./",
         output_dir=config['output_dir'],
@@ -643,8 +658,11 @@ rule analytics_bioentities_mapping:
     This needs to happen both in general updating loading (post E! Update) and for accession specific loading.
     """
     log: "analytics_bioentities_mapping/{chunk}/analytics_mapping.log"
+    benchmark: "benchmarks/analytics_bioentities_mapping/{chunk}.tsv"
+    resources:
+        slurm_partition="datamover"
     container:
-        "docker://quay.io/ebigxa/atlas-index-base:1.5"
+        "docker://quay.io/ebigxa/atlas-index-base:1.9"
     input:
         # This could optionally be either that file or a file given with specific accessions to redo.
         # or maybe the accessions broken in chunks.
@@ -700,8 +718,9 @@ rule create_analytics_jsonl_files:
     This needs to happen both in general updating loading (post E! Update) and for accession specific loading.
     """
     log: "analytics_jsonl_files/{chunk}/analytics_jsonl_files.log"
+    benchmark: "benchmarks/create_analytics_jsonl_files/{chunk}.tsv"
     container:
-        "docker://quay.io/ebigxa/atlas-index-base:1.5"
+        "docker://quay.io/ebigxa/atlas-index-base:1.9"
     input:
         # This could optionally be either that file or a file given with specific accessions to redo.
         # or maybe the accessions broken in chunks.
@@ -773,8 +792,9 @@ rule load_bulk_analytics_index:
     This needs to happen both in general updating loading (post E! Update) and for accession specific loading.
     """
     log: "load_bulk_analytics_index/{chunk}/load_bulk_analytics_index.log"
+    benchmark: "benchmarks/load_bulk_analytics_index/{chunk}.tsv"
     container:
-        "docker://quay.io/ebigxa/atlas-index-base:1.5"
+        "docker://quay.io/ebigxa/atlas-index-base:1.9"
     input:
         jsonl_created=rules.create_analytics_jsonl_files.output.created,
         accessions="accessions_{chunk}"
@@ -839,6 +859,7 @@ rule load_bulk_analytics_index:
 rule aggregate_load_bulk_analytics_index:
     input: aggregate_accessions_load_bulk_analytics_index
     output: "load_bulk_analytics_index.done"
+    benchmark: "benchmarks/aggregate_load_bulk_analytics_index.tsv"
     shell:
         """
         touch {output}
